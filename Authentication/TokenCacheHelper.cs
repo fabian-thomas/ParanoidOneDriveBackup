@@ -1,9 +1,7 @@
 using Microsoft.Identity.Client;
-using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace ParanoidOneDriveBackup
 {
@@ -16,7 +14,7 @@ namespace ParanoidOneDriveBackup
         }
 
 
-        public static readonly string CacheFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location + ".msalcache.bin3";
+        public static readonly string CacheFilePath = Assembly.GetExecutingAssembly().Location + ".msalcache.bin3";
 
         private static readonly object FileLock = new object();
 

@@ -10,101 +10,35 @@ namespace ParanoidOneDriveBackup
 {
     class Program
     {
+        protected static IConfigurationRoot Configuration;
+
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Working with Graph and One Drive is fun!");
+            LoadConfiguration();
 
-            var appConfig = LoadAppSettings();
+            var authProvider = new DeviceCodeAuthProvider(Configuration[C.MSGRAPH_ID], Helper.ScopesStringToArray(Configuration[C.MSGRAPH_SCOPES]));
+            await authProvider.InitializeAuthentication();
 
-            if (appConfig == null)
-            {
-                Console.WriteLine("Missing or invalid appsettings.json...exiting");
-                return;
-            }
-
-            var appId = appConfig["appId"];
-            var tenantId = "f8cdef31-a31e-4b4a-93e4-5f571e91255a";
-            var scopesString = appConfig["scopes"];
-            var scopes = scopesString.Split(';');
-            //string[] scopes = new string[] { "email", "Files.Read.All", "offline_access", "openid", "profile", "User.Read" };//new string[] { "default" }; // "https://graph.microsoft.com/.default"
-
-            // Initialize the auth provider with values from appsettings.json
-            var authProvider = new DeviceCodeAuthProvider(appId, scopes);
-
-            // Request a token to sign in the user
-            var accessToken = authProvider.GetAccessToken().Result;
             GraphHelper.Initialize(authProvider);
 
-            int choice = -1;
-            while (choice != 0)
-            {
-                Console.WriteLine("Please choose one of the following options:");
-                Console.WriteLine("0. Exit");
-                Console.WriteLine("1. Display your access token");
-                Console.WriteLine("2. Get your OneDrive root folder");
-                Console.WriteLine("3. List your OneDrive contents");
-                try
-                {
-                    choice = int.Parse(Console.ReadLine());
-                }
-                catch (System.FormatException)
-                {
-                    // Set to invalid value
-                    choice = -1;
-                }
+            await GraphHelper.Test();
 
-                switch (choice)
-                {
-                    case 0:
-                        // Exit the program
-                        Console.WriteLine("Goodbye...");
-                        break;
-                    case 1:
-                        // Display access token
-                        Console.WriteLine($"The access token is:{accessToken}");
-                        break;
-                    case 2:
-                        // Get OneDrive Info
-                        Console.WriteLine(string.Empty);
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        var driveInfo = await GraphHelper.GetOneDriveAsync();
-                        //GraphHelper.GetDriveContentsAsync().Result.First().
-                        Console.WriteLine(FormatDriveInfo(driveInfo));
-                        Console.ForegroundColor = ConsoleColor.White;
-                        break;
-                    case 3:
-                        // Get OneDrive contents
-                        var driveContents = await GraphHelper.GetDriveContentsAsync();
-                        Console.WriteLine(string.Empty);
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine(ListOneDriveContents(driveContents.ToList()));
-                        Console.ForegroundColor = ConsoleColor.White;
-
-                        break;
-
-                    case 4:
-                        GraphHelper.Test();
-                        break;
-                    default:
-                        Console.WriteLine("Invalid choice! Please try again.");
-                        break;
-                }
-            }
+            Console.ReadKey();
         }
 
-        static IConfigurationRoot LoadAppSettings()
+        private static void LoadConfiguration()
         {
-            var appConfig = new ConfigurationBuilder()
+            Configuration = new ConfigurationBuilder()
                 .AddUserSecrets<Program>()
+                .AddJsonFile("appsettings.json")
                 .Build();
 
-            // Check for required settings
-            if (string.IsNullOrEmpty(appConfig["appId"]) || string.IsNullOrEmpty(appConfig["scopes"]))
-            {
-                return null;
-            }
 
-            return appConfig;
+            if (string.IsNullOrEmpty(Configuration[C.MSGRAPH_ID]) || string.IsNullOrEmpty(Configuration[C.MSGRAPH_SCOPES]))
+            {
+                // TODO
+                throw new Exception();
+            }
         }
 
         static string FormatDriveInfo(Drive drive)

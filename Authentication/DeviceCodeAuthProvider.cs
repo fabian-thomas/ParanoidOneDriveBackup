@@ -10,72 +10,62 @@ namespace ParanoidOneDriveBackup
 {
     public class DeviceCodeAuthProvider : IAuthenticationProvider
     {
-        private IPublicClientApplication _msalClient;
-        private string[] _scopes;
-        private IAccount _userAccount;
+        private IPublicClientApplication authClient;
+        private string[] scopes;
+        private IAccount userAccount;
 
         public DeviceCodeAuthProvider(string appId, string[] scopes)
         {
-            _scopes = scopes;
+            this.scopes = scopes;
 
-            _msalClient = PublicClientApplicationBuilder
+            authClient = PublicClientApplicationBuilder
                 .Create(appId)
                 .WithAuthority(AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount, true)
                 .Build();
 
-            TokenCacheHelper.EnableSerialization(_msalClient.UserTokenCache);
+            TokenCacheHelper.EnableSerialization(authClient.UserTokenCache);
+        }
+
+        public async Task InitializeAuthentication()
+        {
+            // check if there is an account in cache
+            var accounts = await authClient.GetAccountsAsync();
+            userAccount = accounts.FirstOrDefault();
+
+            if (userAccount == null)
+            {
+                try
+                {
+                    // acquire token over device login
+                    var result = await authClient.AcquireTokenWithDeviceCode(scopes, callback =>
+                    {
+                        return Task.FromResult(0);
+                    }).ExecuteAsync();
+
+                    userAccount = result.Account;
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine($"Error during authentication: {exception.Message}");
+                    // TODO logging
+                }
+            }
         }
 
         public async Task<string> GetAccessToken()
         {
-            if (_userAccount == null)
-            {
-                var accounts = await _msalClient.GetAccountsAsync();
-                _userAccount = accounts.FirstOrDefault();
-            }
+            var result = await authClient
+                .AcquireTokenSilent(scopes, userAccount)
+                .ExecuteAsync();
 
-            // If there is no saved user account, the user must sign-in
-            if (_userAccount == null)
-            {
-                try
-                {
-                    // Invoke device code flow so user can sign-in with a browser
-                    var result = await _msalClient.AcquireTokenWithDeviceCode(_scopes, callback =>
-                    {
-                        Console.WriteLine(callback.Message);
-                        return Task.FromResult(0);
-                    }).ExecuteAsync();
+            return result.AccessToken;
 
-                    _userAccount = result.Account;
-                    return result.AccessToken;
-                }
-                catch (Exception exception)
-                {
-                    Console.WriteLine($"Error getting access token: {exception.Message}");
-                    return null;
-                }
-            }
-            else
-            {
-                // If there is an account, call AcquireTokenSilent
-                // By doing this, MSAL will refresh the token automatically if
-                // it is expired. Otherwise it returns the cached token.
-
-                var result = await _msalClient
-                    .AcquireTokenSilent(_scopes, _userAccount)
-                    .ExecuteAsync();
-
-                return result.AccessToken;
-            }
+            // TODO what happens when token is rejeced during process running
         }
 
-        // This is the required function to implement IAuthenticationProvider
-        // The Graph SDK will call this function each time it makes a Graph
-        // call.
         public async Task AuthenticateRequestAsync(HttpRequestMessage requestMessage)
         {
-            requestMessage.Headers.Authorization =
-                new AuthenticationHeaderValue("bearer", await GetAccessToken());
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("bearer", await GetAccessToken());
         }
     }
 }

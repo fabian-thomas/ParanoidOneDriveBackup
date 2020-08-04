@@ -7,7 +7,7 @@ using System.Text;
 
 namespace ParanoidOneDriveBackup
 {
-    static class TokenCacheHelper
+    static class TokenCacheHelper // taken from https://docs.microsoft.com/de-de/azure/active-directory/develop/msal-net-token-cache-serialization
     {
         public static void EnableSerialization(ITokenCache tokenCache)
         {
@@ -15,9 +15,7 @@ namespace ParanoidOneDriveBackup
             tokenCache.SetAfterAccess(AfterAccessNotification);
         }
 
-        /// <summary>
-        /// Path to the token cache
-        /// </summary>
+
         public static readonly string CacheFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location + ".msalcache.bin3";
 
         private static readonly object FileLock = new object();

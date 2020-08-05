@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using System;
 using System.Collections.Generic;
@@ -61,14 +62,15 @@ namespace ParanoidOneDriveBackup
 
         private static async Task DownloadAllRecursive(DriveItem item, string parentDirectoryPath)
         {
-            // TODO loggin
             if (item.Folder != null)
             {
                 // create directory and download all children recursively
-                var childDirectoryPath = parentDirectoryPath + @"/" + item.Name;
+                var childDirectoryPath = string.Format(@"{0}\{1}", parentDirectoryPath, item.Name);
                 Directory.CreateDirectory(childDirectoryPath);
 
                 var children = await graphClient.Me.Drive.Items[item.Id].Children.Request().GetAsync();
+
+                AppData.Logger.LogDebug("Created Directory: {0}", childDirectoryPath);
 
                 foreach (var child in children)
                     await DownloadAllRecursive(child, childDirectoryPath);
@@ -76,12 +78,14 @@ namespace ParanoidOneDriveBackup
             else if (item.File != null)
             {
                 // download single file
-                var filePath = parentDirectoryPath + @"/" + item.Name;
+                var filePath = string.Format(@"{0}\{1}", parentDirectoryPath, item.Name);
                 var fileStream = File.Create(filePath);
 
                 var contentStream = await graphClient.Me.Drive.Items[item.Id].Content
                                 .Request()
                                 .GetAsync();
+
+                AppData.Logger.LogDebug("Downloading file: {0}", filePath);
 
                 contentStream.Seek(0, SeekOrigin.Begin);
                 contentStream.CopyTo(fileStream);

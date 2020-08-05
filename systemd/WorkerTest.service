@@ -1,0 +1,6 @@
+﻿[Unit]
+Description=test job service
+
+[Service]
+Type=oneshot
+ExecStart=/home/fabian/Shared/WorkerTest

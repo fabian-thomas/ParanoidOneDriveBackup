@@ -7,26 +7,27 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace ParanoidOneDriveBackup
 {
     class Program
     {
 
-        static async Task Main(string[] args)
+        public static void Main(string[] args)
         {
-            Config.LoadConfiguration();
+            AppData.LoadConfiguration();
 
-            var authProvider = new DeviceCodeAuthProvider(Config.MsGraph.ClientId, Config.MsGraph.Scopes);
-            await authProvider.InitializeAuthentication();
-
-            GraphHelper.Initialize(authProvider);
-
-            var path = Directory.GetCurrentDirectory() + @"/download";
-            await GraphHelper.DownloadAll(path);
-
-            Console.ReadKey();
+            CreateHostBuilder(args).Build().Run();
         }
+
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .UseSystemd()
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddHostedService<Worker>();
+                });
 
         //static string FormatDriveInfo(Drive drive)
         //{

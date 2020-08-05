@@ -1,10 +1,14 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace ParanoidOneDriveBackup
 {
-    static class Config
+    static class AppData
     {
-        public static MsGraphConfig MsGraph = new MsGraphConfig();
+        public static MsGraphConfig MsGraphConfig = new MsGraphConfig();
+        public static IHostApplicationLifetime Lifetime;
+        public static ILogger<Worker> Logger;
 
         public static void LoadConfiguration()
         {
@@ -13,7 +17,7 @@ namespace ParanoidOneDriveBackup
                 .AddJsonFile("config.json")
                 .Build();
 
-            ConfigurationBinder.Bind(configuration, "MsGraph", MsGraph);
+            ConfigurationBinder.Bind(configuration, "MsGraph", MsGraphConfig);
 
 
             // TODO check if values in config are correct

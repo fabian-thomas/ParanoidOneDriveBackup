@@ -39,6 +39,7 @@ namespace ParanoidOneDriveBackup
                     // acquire token over device login
                     var result = await authClient.AcquireTokenWithDeviceCode(scopes, callback =>
                     {
+                        Console.WriteLine(callback.Message);
                         return Task.FromResult(0);
                     }).ExecuteAsync();
 

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Graph;
 
 namespace ParanoidOneDriveBackup
 {
@@ -22,7 +22,8 @@ namespace ParanoidOneDriveBackup
 
             GraphHelper.Initialize(authProvider);
 
-            await GraphHelper.Test();
+            var path = Directory.GetCurrentDirectory() + @"/download";
+            await GraphHelper.DownloadAll(path);
 
             Console.ReadKey();
         }

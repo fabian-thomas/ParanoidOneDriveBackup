@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
+using ParanoidOneDriveBackup.App;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,13 +12,17 @@ using File = System.IO.File;
 
 namespace ParanoidOneDriveBackup
 {
-    public class GraphHelper
+    public class GraphHelper<T>
     {
-        private static GraphServiceClient graphClient;
+        private GraphServiceClient _graphClient;
+        private ILogger<T> _logger;
 
-        public static void Initialize(IAuthenticationProvider authProvider)
+        private List<Task> downloadTasks;
+
+        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider)
         {
-            graphClient = new GraphServiceClient(authProvider);
+            _graphClient = new GraphServiceClient(authProvider);
+            _logger = logger;
         }
 
         //public static async Task<User> GetMeAsync()
@@ -60,39 +65,86 @@ namespace ParanoidOneDriveBackup
         //    }
         //}
 
-        private static async Task DownloadAllRecursive(DriveItem item, string parentDirectoryPath)
+        private async Task DownloadAllRecursive(DriveItem item, string parentDirectoryRelativePath)
         {
+            var childRelativePath = $"{parentDirectoryRelativePath}/{item.Name}";
+
             if (item.Folder != null)
             {
                 // create directory and download all children recursively
-                var childDirectoryPath = string.Format(@"{0}\{1}", parentDirectoryPath, item.Name);
-                Directory.CreateDirectory(childDirectoryPath);
+                if (item.Root != null)
+                {
+                    // item is root item
+                    childRelativePath = "";
+                }
 
-                var children = await graphClient.Me.Drive.Items[item.Id].Children.Request().GetAsync();
+                try
+                {
+                    var children = await _graphClient.Me.Drive.Items[item.Id].Children.Request().GetAsync();
 
-                AppData.Logger.LogDebug("Created Directory: {0}", childDirectoryPath);
+                    if (item.Root != null)
+                    {
+                        // item is root item
+                        try
+                        {
+                            Directory.CreateDirectory(_rootPath);
+                            _logger.LogDebug("Created Directory: \"{0}\"", _rootPath);
+                        }
+                        catch (IOException ex)
+                        {
+                            _logger.LogError("Could not create directory \"{0}\". No items have been downloaded.\n{1}", _rootPath, ex);
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(_rootPath + childRelativePath);
+                            _logger.LogDebug("Created Directory: \"{0}\"", childRelativePath);
+                        }
+                        catch (IOException ex)
+                        {
+                            _logger.LogError("Could not create directory \"{0}\". No children have been downloaded.\n{1}", childRelativePath, ex);
+                        }
+                    }
 
-                foreach (var child in children)
-                    await DownloadAllRecursive(child, childDirectoryPath);
+                    foreach (var child in children)
+                        downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
+                }
+                catch (ServiceException ex)
+                {
+                    _logger.LogError("Could not get children of directory \"{0}\".\n{1}", childRelativePath, ex);
+                }
             }
             else if (item.File != null)
             {
                 // download single file
-                var filePath = string.Format(@"{0}\{1}", parentDirectoryPath, item.Name);
-                var fileStream = File.Create(filePath);
+                try
+                {
+                    var fileStream = File.Create(_rootPath + childRelativePath);
 
-                var contentStream = await graphClient.Me.Drive.Items[item.Id].Content
-                                .Request()
-                                .GetAsync();
+                    var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content
+                                    .Request()
+                                    .GetAsync();
 
-                AppData.Logger.LogDebug("Downloading file: {0}", filePath);
+                    _logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
 
-                contentStream.Seek(0, SeekOrigin.Begin);
-                contentStream.CopyTo(fileStream);
-                fileStream.Close();
+                    contentStream.Seek(0, SeekOrigin.Begin);
+                    contentStream.CopyTo(fileStream);
+                    fileStream.Close();
+                }
+                catch (ServiceException ex)
+                {
+                    _logger.LogError("Could not download file \"{0}\".\n{1}", childRelativePath, ex);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogError("Could not create file \"{0}\".\n{1}", childRelativePath, ex);
+                }
             }
             else if (item.Package != null && item.Package.Type.Equals("oneNote"))
             {
+                _logger.LogWarning("Onenote file \"{0}\"", childRelativePath);
                 return;
                 // onenote notebook
 
@@ -100,7 +152,7 @@ namespace ParanoidOneDriveBackup
                 //throw new Exception();
 
 
-                var ite = graphClient.Me.Drive.Items[item.Id];
+                var ite = _graphClient.Me.Drive.Items[item.Id];
                 var c = ite.Content;
                 var r = c.Request();
                 //graphClient.Me.Onenote.
@@ -110,7 +162,7 @@ namespace ParanoidOneDriveBackup
 
                 try
                 {
-                    var filePath = parentDirectoryPath + @"/TestPage.one";
+                    var filePath = parentDirectoryRelativePath + @"/TestPage.one";
                     //var filePath = parentDirectoryPath + @"/" + item.Name;
                     var fileStream = File.Create(filePath);
 
@@ -120,13 +172,13 @@ namespace ParanoidOneDriveBackup
 
 
 
-                    var notebooks = await graphClient.Me.Onenote.Notebooks.Request().GetAsync();
+                    var notebooks = await _graphClient.Me.Onenote.Notebooks.Request().GetAsync();
                     var note = notebooks.First();
-                    Microsoft.Graph.Notebook notebook = await graphClient.Me.Onenote.Notebooks[note.Id].Request().GetAsync();
+                    Microsoft.Graph.Notebook notebook = await _graphClient.Me.Onenote.Notebooks[note.Id].Request().GetAsync();
 
-                    var pags = await graphClient.Me.Onenote.Pages.Request().Filter("title eq 'TestPage'").GetAsync();
+                    var pags = await _graphClient.Me.Onenote.Pages.Request().Filter("title eq 'TestPage'").GetAsync();
 
-                    var stream = await graphClient.Me.Onenote.Pages[pags.First().Id].Content.Request().GetAsync();
+                    var stream = await _graphClient.Me.Onenote.Pages[pags.First().Id].Content.Request().GetAsync();
 
 
                     stream.Seek(0, SeekOrigin.Begin);
@@ -146,14 +198,14 @@ namespace ParanoidOneDriveBackup
                     //}
 
 
-                    var res = await graphClient.Me.Onenote.Resources.Request().GetAsync();
+                    var res = await _graphClient.Me.Onenote.Resources.Request().GetAsync();
 
-                    stream = await graphClient.Me.Onenote.Resources[pags.First().Id].Content
+                    stream = await _graphClient.Me.Onenote.Resources[pags.First().Id].Content
                                     .Request()
-                                    .GetAsync();
+                                                        .GetAsync();
 
 
-                    filePath = parentDirectoryPath + @"/TestPage2.one";
+                    filePath = parentDirectoryRelativePath + @"/TestPage2.one";
                     fileStream = File.Create(filePath);
                     stream.Seek(0, SeekOrigin.Begin);
                     stream.CopyTo(fileStream);
@@ -172,19 +224,34 @@ namespace ParanoidOneDriveBackup
             }
             else
             {
-                throw new NotSupportedException();
+                if (item.Package == null)
+                    _logger.LogError("File \"{0}\" is not supported.", childRelativePath);
+                else
+                    _logger.LogError("File \"{1}\" of type {0} is not supported.", item.Package.Type, childRelativePath);
+
             }
         }
 
-        public static async Task DownloadAll(string path)
+        private string _rootPath;
+
+        public async Task DownloadAll(string rootPath)
         {
             try
             {
-                await DownloadAllRecursive(graphClient.Me.Drive.Root.Request().GetAsync().Result, path);
+                _rootPath = rootPath;
+                _logger.LogInformation("Backing up OneDrive to \"{0}\"", _rootPath);
+
+                downloadTasks = new List<Task>();
+
+                await DownloadAllRecursive(_graphClient.Me.Drive.Root.Request().GetAsync().Result, "");
+
+                Task.WaitAll(downloadTasks.ToArray());
+
+                _logger.LogInformation("Backup finished.");
             }
             catch (ServiceException ex)
             {
-                // TODO
+                _logger.LogCritical("Could not get root item of OneDrive. Nothing could be downloaded.\n{0}", ex);
             }
         }
 

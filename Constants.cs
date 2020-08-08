@@ -6,5 +6,6 @@ namespace ParanoidOneDriveBackup
 {
     static class Constants
     {
+        public const string BackupFolderPrefix = "OneDrive_";
     }
 }

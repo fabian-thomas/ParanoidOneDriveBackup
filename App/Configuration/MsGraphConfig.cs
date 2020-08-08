@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace ParanoidOneDriveBackup
+namespace ParanoidOneDriveBackup.App.Configuration
 {
     [Description("MsGraph")]
     class MsGraphConfig

@@ -25,12 +25,12 @@ namespace ParanoidOneDriveBackup
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
                     config.AddJsonFile("appsettings.json")
-                          .AddJsonFile($"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json")//, optional: true
+                          .AddJsonFile($"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json", optional: true)
                           .AddUserSecrets<Program>();
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddHostedService<Worker>();
+                    services.AddHostedService<BackupService>();
                 });
 
         //static string FormatDriveInfo(Drive drive)

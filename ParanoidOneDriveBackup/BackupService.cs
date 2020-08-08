@@ -6,7 +6,9 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ParanoidOneDriveBackup.App;
@@ -27,27 +29,22 @@ namespace ParanoidOneDriveBackup
 
         protected override async Task ExecuteAsync(CancellationToken ct)
         {
-            try
-            {
-                // Authentication
-                var authProvider = new DeviceCodeAuthProvider(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes);
-                await authProvider.InitializeAuthentication();
+            // Authentication
+            var authProvider = new DeviceCodeAuthProvider(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes);
+            await authProvider.InitializeAuthentication();
 
-                // Backup
+            // Backup
+            if (!ct.IsCancellationRequested)
+            {
+                DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
                 if (!ct.IsCancellationRequested)
                 {
-                    DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
-                    if (!ct.IsCancellationRequested)
-                    {
-                        var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, $@"{AppData.BackupConfig.Path}/{GetBackupDirectoryName()}");
-                        await graphHelper.DownloadAll();
-                    }
+                    var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, $@"{AppData.BackupConfig.Path}/{GetBackupDirectoryName()}");
+                    await graphHelper.DownloadAll();
                 }
             }
-            finally
-            {
-                AppData.Lifetime.StopApplication();
-            }
+
+            AppData.Lifetime.StopApplication();
         }
 
         private void DeleteOldestFolders(string path, int max, CancellationToken ct)

@@ -1,12 +1,13 @@
 using Microsoft.Identity.Client;
+using ParanoidOneDriveBackup.App;
 using System.IO;
 using System.Reflection;
-using System.Security.Cryptography;
 
 namespace ParanoidOneDriveBackup
 {
     static class TokenCacheHelper // taken from https://docs.microsoft.com/de-de/azure/active-directory/develop/msal-net-token-cache-serialization
     {
+
         public static void EnableSerialization(ITokenCache tokenCache)
         {
             tokenCache.SetBeforeAccess(BeforeAccessNotification);
@@ -24,9 +25,7 @@ namespace ParanoidOneDriveBackup
             lock (FileLock)
             {
                 args.TokenCache.DeserializeMsalV3(File.Exists(CacheFilePath)
-                        ? ProtectedData.Unprotect(File.ReadAllBytes(CacheFilePath),
-                                                  null,
-                                                  DataProtectionScope.CurrentUser)
+                        ? AppData.Protector.Unprotect(File.ReadAllBytes(CacheFilePath))
                         : null);
             }
         }
@@ -40,10 +39,7 @@ namespace ParanoidOneDriveBackup
                 {
                     // reflect changesgs in the persistent store
                     File.WriteAllBytes(CacheFilePath,
-                                        ProtectedData.Protect(args.TokenCache.SerializeMsalV3(),
-                                                                null,
-                                                                DataProtectionScope.CurrentUser)
-                                        );
+                                        AppData.Protector.Protect(args.TokenCache.SerializeMsalV3()));
                 }
             }
         }

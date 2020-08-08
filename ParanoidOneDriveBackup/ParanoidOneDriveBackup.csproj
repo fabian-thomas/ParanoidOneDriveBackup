@@ -5,8 +5,20 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UserSecretsId>420568ec-e9d2-4de3-818e-86ddf4fda7cb</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="appsettings.Development.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="appsettings.Development.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="3.1.6" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="3.1.6" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="3.1.6" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="3.1.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.6" />
@@ -16,6 +28,5 @@
     <PackageReference Include="Microsoft.Graph" Version="3.9.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.17.1" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.7.0" />
   </ItemGroup>
 </Project>

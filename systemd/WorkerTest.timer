@@ -2,7 +2,7 @@
 Description=test timer
 
 [Timer]
-OnUnitActiveSec=120s
+OnUnitActiveSec=60s
 #OnCalendar=*-*-* 4:00:00
 #OnBootSec=20s
 

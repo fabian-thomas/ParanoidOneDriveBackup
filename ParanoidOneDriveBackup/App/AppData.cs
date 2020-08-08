@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ParanoidOneDriveBackup.App.Configuration;
@@ -10,6 +11,7 @@ namespace ParanoidOneDriveBackup.App
         public static MsGraphConfig MsGraphConfig = new MsGraphConfig();
         public static BackupConfig BackupConfig = new BackupConfig();
         public static IHostApplicationLifetime Lifetime;
+        public static IDataProtector Protector;
 
         public static void BindConfig(IConfiguration config)
         {

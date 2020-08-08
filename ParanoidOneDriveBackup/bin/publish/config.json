@@ -1,6 +1,0 @@
-{
-	"MsGraph": {
-		"ClientId": "9d71fac5-899e-4226-9b58-2caeb1fb5cf8",
-		"Scopes": ["Files.Read.All", "offline_access", "openid", "profile", "User.Read"]
-	}
-}

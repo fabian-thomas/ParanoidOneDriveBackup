@@ -25,35 +25,32 @@ namespace ParanoidOneDriveBackup
             AppData.BindConfig(config);
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken ct)
         {
             try
             {
-                _logger.LogInformation("Ran at: {time}", DateTimeOffset.Now);
-
+                // Authentication
                 var authProvider = new DeviceCodeAuthProvider(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes);
                 await authProvider.InitializeAuthentication();
 
-
-                DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum);
-                var graphHelper = new GraphHelper<BackupService>(_logger, authProvider);
-                await graphHelper.DownloadAll($@"{AppData.BackupConfig.Path}/{GetBackupDirectoryName()}");
+                // Backup
+                if (!ct.IsCancellationRequested)
+                {
+                    DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
+                    if (!ct.IsCancellationRequested)
+                    {
+                        var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, $@"{AppData.BackupConfig.Path}/{GetBackupDirectoryName()}");
+                        await graphHelper.DownloadAll();
+                    }
+                }
             }
             finally
             {
                 AppData.Lifetime.StopApplication();
             }
-
-            //while (!stoppingToken.IsCancellationRequested)
-            //{
-            //    _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            //    await Task.Delay(1000, stoppingToken);
-            //}
-
-
         }
 
-        private void DeleteOldestFolders(string path, int max)
+        private void DeleteOldestFolders(string path, int max, CancellationToken ct)
         {
             var dirs = Directory.GetDirectories(path).Select(dir => Path.GetFileName(dir));
             SortedDictionary<string, DateTime> dirDict = new SortedDictionary<string, DateTime>();
@@ -74,14 +71,14 @@ namespace ParanoidOneDriveBackup
             int removed = 0;
             int dirCount = dirDict.Count;
             // remove as much as needed, ignore dirs that throw exception
-            while (dirCount - removed >= max && dirDict.Count > 0)
+            while (dirCount - removed >= max && dirDict.Count > 0 && !ct.IsCancellationRequested)
             {
                 var oldest = dirDict.First();
                 try
                 {
                     dirDict.Remove(oldest.Key);
                     Directory.Delete($@"{path}/{oldest.Key}", true);
-                    _logger.LogInformation("Removed backup \"{0}\".", oldest.Key);
+                    _logger.LogInformation("Removed backup \"{0}\"", oldest.Key);
                     removed++;
                 }
                 catch (IOException ex)
@@ -93,7 +90,7 @@ namespace ParanoidOneDriveBackup
 
         private string ParseBackupDirectoryName(string folderName)
         {
-            folderName = folderName.Remove(0, Constants.BackupFolderPrefix.Length).Replace('_', ' ');
+            folderName = folderName.Remove(0, Constants.BACKUP_DIR_PREFIX.Length).Replace('_', ' ');
             var split = folderName.Split(' ');
             var time = split[1].Replace('-', ':');
             return $"{split[0]} {time}";
@@ -102,7 +99,7 @@ namespace ParanoidOneDriveBackup
         private string GetBackupDirectoryName()
         {
             var s = DateTime.Now.ToString("u", CultureInfo.CreateSpecificCulture("en-US")).Replace(':', '-').Replace(' ', '_');
-            return Constants.BackupFolderPrefix + s.Remove(s.Length - 1);
+            return Constants.BACKUP_DIR_PREFIX + s.Remove(s.Length - 1);
         }
 
         public override async Task StartAsync(CancellationToken cancellationToken)

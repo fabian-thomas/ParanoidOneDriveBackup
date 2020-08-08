@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace ParanoidOneDriveBackup
+﻿namespace ParanoidOneDriveBackup
 {
     static class Constants
     {
-        public const string BackupFolderPrefix = "OneDrive_";
+        public const string BACKUP_DIR_PREFIX = "OneDrive_";
     }
 }

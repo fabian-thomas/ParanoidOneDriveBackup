@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Directory = System.IO.Directory;
 using File = System.IO.File;
@@ -16,54 +17,17 @@ namespace ParanoidOneDriveBackup
     {
         private GraphServiceClient _graphClient;
         private ILogger<T> _logger;
-
         private List<Task> downloadTasks;
+        private CancellationToken _ct;
+        private string _rootPath;
 
-        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider)
+        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath)
         {
             _graphClient = new GraphServiceClient(authProvider);
             _logger = logger;
+            _ct = ct;
+            _rootPath = rootPath;
         }
-
-        //public static async Task<User> GetMeAsync()
-        //{
-        //    try
-        //    {
-        //        // GET /me
-        //        return await client.Me.Request().GetAsync();
-        //    }
-        //    catch (ServiceException ex)
-        //    {
-        //        Console.WriteLine($"Error getting signed-in user: {ex.Message}");
-        //        return null;
-        //    }
-        //}
-
-        //public static async Task Test()
-        //{
-        //    try
-        //    {
-        //        var file = "saved.csv";
-        //        var children = await graphClient.Me.Drive.Root.Children.Request().GetAsync();
-        //        var id = children.Where(x => x.Name.Equals(file)).First().Id;
-
-        //        var stream = await graphClient.Me.Drive.Items[id].Content.Request().GetAsync();
-
-        //        var fileStream = File.Create(Directory.GetCurrentDirectory() + "/" + file);
-        //        stream.Seek(0, SeekOrigin.Begin);
-        //        stream.CopyTo(fileStream);
-        //        fileStream.Close();
-
-
-        //        // GET /me
-        //        //return await graphClient.Me.Request().GetAsync();
-        //    }
-        //    catch (ServiceException ex)
-        //    {
-        //        Console.WriteLine($"Error getting signed-in user: {ex.Message}");
-        //        //return null;
-        //    }
-        //}
 
         private async Task DownloadAllRecursive(DriveItem item, string parentDirectoryRelativePath)
         {
@@ -80,36 +44,40 @@ namespace ParanoidOneDriveBackup
 
                 try
                 {
-                    var children = await _graphClient.Me.Drive.Items[item.Id].Children.Request().GetAsync();
-
-                    if (item.Root != null)
+                    if (!_ct.IsCancellationRequested)
                     {
-                        // item is root item
-                        try
-                        {
-                            Directory.CreateDirectory(_rootPath);
-                            _logger.LogDebug("Created Directory: \"{0}\"", _rootPath);
-                        }
-                        catch (IOException ex)
-                        {
-                            _logger.LogError("Could not create directory \"{0}\". No items have been downloaded.\n{1}", _rootPath, ex);
-                        }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            Directory.CreateDirectory(_rootPath + childRelativePath);
-                            _logger.LogDebug("Created Directory: \"{0}\"", childRelativePath);
-                        }
-                        catch (IOException ex)
-                        {
-                            _logger.LogError("Could not create directory \"{0}\". No children have been downloaded.\n{1}", childRelativePath, ex);
-                        }
-                    }
+                        var children = await _graphClient.Me.Drive.Items[item.Id].Children.Request().GetAsync();
 
-                    foreach (var child in children)
-                        downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
+                        if (item.Root != null)
+                        {
+                            // item is root item
+                            try
+                            {
+                                Directory.CreateDirectory(_rootPath);
+                                _logger.LogDebug("Created Directory: \"{0}\"", _rootPath);
+                            }
+                            catch (IOException ex)
+                            {
+                                _logger.LogError("Could not create directory \"{0}\". No items have been downloaded.\n{1}", _rootPath, ex);
+                            }
+                        }
+                        else
+                        {
+                            try
+                            {
+                                Directory.CreateDirectory(_rootPath + childRelativePath);
+                                _logger.LogDebug("Created Directory: \"{0}\"", childRelativePath);
+                            }
+                            catch (IOException ex)
+                            {
+                                _logger.LogError("Could not create directory \"{0}\". No children have been downloaded.\n{1}", childRelativePath, ex);
+                            }
+                        }
+
+                        if (!_ct.IsCancellationRequested)
+                            foreach (var child in children)
+                                downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
+                    }
                 }
                 catch (ServiceException ex)
                 {
@@ -121,17 +89,23 @@ namespace ParanoidOneDriveBackup
                 // download single file
                 try
                 {
-                    var fileStream = File.Create(_rootPath + childRelativePath);
+                    if (!_ct.IsCancellationRequested)
+                    {
+                        var fileStream = File.Create(_rootPath + childRelativePath);
 
-                    var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content
-                                    .Request()
-                                    .GetAsync();
+                        var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content
+                                        .Request()
+                                        .GetAsync();
 
-                    _logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
+                        if (!_ct.IsCancellationRequested)
+                        {
+                            _logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
 
-                    contentStream.Seek(0, SeekOrigin.Begin);
-                    contentStream.CopyTo(fileStream);
-                    fileStream.Close();
+                            contentStream.Seek(0, SeekOrigin.Begin);
+                            contentStream.CopyTo(fileStream);
+                            fileStream.Close();
+                        }
+                    }
                 }
                 catch (ServiceException ex)
                 {
@@ -232,13 +206,10 @@ namespace ParanoidOneDriveBackup
             }
         }
 
-        private string _rootPath;
-
-        public async Task DownloadAll(string rootPath)
+        public async Task DownloadAll()
         {
             try
             {
-                _rootPath = rootPath;
                 _logger.LogInformation("Backing up OneDrive to \"{0}\"", _rootPath);
 
                 downloadTasks = new List<Task>();
@@ -255,32 +226,5 @@ namespace ParanoidOneDriveBackup
             }
         }
 
-
-        //public static async Task<Drive> GetOneDriveAsync()
-        //{
-        //    try
-        //    {
-        //        // GET /me
-        //        return await client.Me.Drive.Request().GetAsync();
-        //    }
-        //    catch (ServiceException ex)
-        //    {
-        //        Console.WriteLine($"Error getting OneDrive data: {ex.Message}");
-        //        return null;
-        //    }
-        //}
-
-        //public static async Task<IEnumerable<DriveItem>> GetDriveContentsAsync()
-        //{
-        //    try
-        //    {
-        //        return await client.Me.Drive.Root.Children.Request().GetAsync();
-        //    }
-        //    catch (ServiceException ex)
-        //    {
-        //        Console.WriteLine($"Error getting One Drive contents: {ex.Message}");
-        //        return null;
-        //    }
-        //}
     }
 }

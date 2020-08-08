@@ -10,14 +10,9 @@ namespace ParanoidOneDriveBackup
         public static IHostApplicationLifetime Lifetime;
         public static ILogger<Worker> Logger;
 
-        public static void LoadConfiguration()
+        public static void BindConfig(IConfiguration config)
         {
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddUserSecrets<Program>()
-                .AddJsonFile("config.json")
-                .Build();
-
-            ConfigurationBinder.Bind(configuration, "MsGraph", MsGraphConfig);
+            ConfigurationBinder.Bind(config, Helper.GetDescription(typeof(MsGraphConfig)), MsGraphConfig);
 
 
             // TODO check if values in config are correct

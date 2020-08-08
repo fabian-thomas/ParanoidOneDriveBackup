@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -12,10 +13,12 @@ namespace ParanoidOneDriveBackup
     public class Worker : BackgroundService
     {
 
-        public Worker(IHostApplicationLifetime hostApplicationLifetime, ILogger<Worker> logger)
+        public Worker(IHostApplicationLifetime hostApplicationLifetime, ILogger<Worker> logger, IConfiguration config)
         {
             AppData.Logger = logger;
             AppData.Lifetime = hostApplicationLifetime;
+
+            AppData.BindConfig(config);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -44,6 +47,11 @@ namespace ParanoidOneDriveBackup
             //}
 
 
+        }
+
+        public override async Task StartAsync(CancellationToken cancellationToken)
+        {
+            ExecuteAsync(cancellationToken);
         }
     }
 }

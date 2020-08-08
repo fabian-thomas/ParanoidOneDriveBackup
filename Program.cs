@@ -16,14 +16,18 @@ namespace ParanoidOneDriveBackup
 
         public static void Main(string[] args)
         {
-            AppData.LoadConfiguration();
-
             CreateHostBuilder(args).Build().Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .UseSystemd()
+                .ConfigureAppConfiguration((hostingContext, config) =>
+                {
+                    config.AddJsonFile("appsettings.json")
+                          .AddJsonFile($"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json")//, optional: true
+                          .AddUserSecrets<Program>();
+                })
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddHostedService<Worker>();

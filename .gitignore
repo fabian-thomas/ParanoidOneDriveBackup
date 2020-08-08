@@ -1,7 +1,6 @@
-/.vs
-/.vscode
-/bin
-/obj
-/ParanoidOneDriveBackup.sln
-/ParanoidOneDriveBackup.csproj.user
-/download
+.vs
+.vscode
+bin
+obj
+*.sln
+*.csproj.user

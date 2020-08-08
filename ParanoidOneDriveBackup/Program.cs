@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ParanoidOneDriveBackup.App;
+using System.IO;
+using System.Reflection;
 
 namespace ParanoidOneDriveBackup
 {
@@ -19,7 +21,8 @@ namespace ParanoidOneDriveBackup
                 .UseSystemd()
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
-                    config.AddJsonFile("appsettings.json")
+                    config.SetBasePath(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location))
+                          .AddJsonFile("appsettings.json")
                           .AddJsonFile($"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json", optional: true)
                           .AddUserSecrets<Program>(optional: true);
                 })

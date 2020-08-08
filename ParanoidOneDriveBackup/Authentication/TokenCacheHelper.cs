@@ -37,7 +37,7 @@ namespace ParanoidOneDriveBackup
             {
                 lock (FileLock)
                 {
-                    // reflect changesgs in the persistent store
+                    // reflect changes in the persistent store
                     File.WriteAllBytes(CacheFilePath,
                                         AppData.Protector.Protect(args.TokenCache.SerializeMsalV3()));
                 }

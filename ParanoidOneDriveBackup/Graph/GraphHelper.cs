@@ -216,6 +216,7 @@ namespace ParanoidOneDriveBackup
 
                 await DownloadAllRecursive(_graphClient.Me.Drive.Root.Request().GetAsync().Result, "");
 
+                _logger.LogDebug("Awaiting downloads to finish...");
                 Task.WaitAll(downloadTasks.ToArray());
 
                 _logger.LogInformation("Backup finished.");

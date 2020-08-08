@@ -30,11 +30,11 @@ namespace ParanoidOneDriveBackup
         protected override async Task ExecuteAsync(CancellationToken ct)
         {
             // Authentication
-            var authProvider = new DeviceCodeAuthProvider(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes);
-            await authProvider.InitializeAuthentication();
+            var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, _logger);
+            var authenticated = await authProvider.InitializeAuthentication();
 
             // Backup
-            if (!ct.IsCancellationRequested)
+            if (!ct.IsCancellationRequested || !authenticated)
             {
                 DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
                 if (!ct.IsCancellationRequested)

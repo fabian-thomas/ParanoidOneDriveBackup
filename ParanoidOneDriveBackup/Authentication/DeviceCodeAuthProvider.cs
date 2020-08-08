@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
 using System;
@@ -8,57 +9,58 @@ using System.Threading.Tasks;
 
 namespace ParanoidOneDriveBackup
 {
-    public class DeviceCodeAuthProvider : IAuthenticationProvider
+    public class DeviceCodeAuthProvider<T> : IAuthenticationProvider
     {
-        private IPublicClientApplication authClient;
-        private string[] scopes;
-        private IAccount userAccount;
+        private IPublicClientApplication _authClient;
+        private string[] _scopes;
+        private IAccount _userAccount;
+        private ILogger<T> _logger;
 
-        public DeviceCodeAuthProvider(string appId, string[] scopes)
+        public DeviceCodeAuthProvider(string appId, string[] scopes, ILogger<T> logger)
         {
-            this.scopes = scopes;
+            _scopes = scopes;
+            _logger = logger;
 
-            authClient = PublicClientApplicationBuilder
+            _authClient = PublicClientApplicationBuilder
                 .Create(appId)
                 .WithAuthority(AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount, true)
                 .Build();
 
-            TokenCacheHelper.EnableSerialization(authClient.UserTokenCache);
+            TokenCacheHelper.EnableSerialization(_authClient.UserTokenCache);
         }
 
-        public async Task InitializeAuthentication()
+        public async Task<bool> InitializeAuthentication()
         {
             // check if there is an account in cache
-            var accounts = await authClient.GetAccountsAsync();
-            userAccount = accounts.FirstOrDefault();
+            var accounts = await _authClient.GetAccountsAsync();
+            _userAccount = accounts.FirstOrDefault();
 
-            if (userAccount == null)
+            if (_userAccount == null)
             {
                 try
                 {
                     // acquire token over device login
-                    var result = await authClient.AcquireTokenWithDeviceCode(scopes, callback =>
+                    var result = await _authClient.AcquireTokenWithDeviceCode(_scopes, callback =>
                     {
                         Console.WriteLine(callback.Message);
                         return Task.FromResult(0);
                     }).ExecuteAsync();
 
-                    userAccount = result.Account;
+                    _userAccount = result.Account;
                 }
-                catch (Exception exception)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"Error during authentication: {exception.Message}");
-                    // TODO logging
+                    _logger.LogCritical("Error during authentication.\n{0}", ex);
+                    return false;
                 }
             }
+            return true;
         }
 
         public async Task<string> GetAccessToken()
         {
-            var result = await authClient
-                .AcquireTokenSilent(scopes, userAccount)
-                .ExecuteAsync();
-
+            var result = await _authClient.AcquireTokenSilent(_scopes, _userAccount)
+                                          .ExecuteAsync();
             return result.AccessToken;
 
             // TODO what happens when token is rejeced during process running

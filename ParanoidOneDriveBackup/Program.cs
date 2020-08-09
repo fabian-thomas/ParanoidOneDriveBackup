@@ -22,27 +22,20 @@ namespace ParanoidOneDriveBackup
                 .UseSystemd()
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
-                    if (Environment.OSVersion.Platform == PlatformID.Unix)
+                    if (!File.Exists(Constants.CONFIG_FILE_PATH))
                     {
-                        if (!File.Exists(Constants.CONFIG_FILE_PATH))
-                        {
-                            Console.WriteLine(Constants.CONFIG_FILE_PATH);
-                            Console.WriteLine("--------------------------------------------config files does not exist");
-                            // TODO directory does not exist
-                            // TODO copy config file
-                            //File.Copy(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location))
-                        }
-                        config.AddJsonFile(Constants.CONFIG_FILE_PATH);
+                        File.Copy(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Constants.CONFIG_FILE_NAME), Constants.CONFIG_FILE_PATH);
+                        Console.WriteLine($"No config file found. The default config file has been copied to \"{Constants.CONFIG_FILE_PATH}\". Modify it and restart the application.");
+                        Console.WriteLine();
+                        Console.WriteLine("Press any key to exit...");
+                        Console.ReadKey();
+                        Environment.Exit(1);
                     }
-                    else
-                        config.SetBasePath(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location))
-                              .AddJsonFile("appsettings.json")
-                              .AddJsonFile($"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json", optional: true)
-                              .AddUserSecrets<Program>(optional: true);
+                    config.AddJsonFile(Constants.CONFIG_FILE_PATH);
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    AppData.Protector = DataProtectionProvider.Create("ParanoidOneDriveBackup").CreateProtector("ParanoidOneDriveBackup");// TODO move to startup and change implementation
+                    AppData.Protector = DataProtectionProvider.Create(Constants.APP_TITLE).CreateProtector(Constants.APP_TITLE);// TODO move to startup and change implementation
                     //AppData.Protector = services.AddDataProtection().Services
                     //                            .BuildServiceProvider()
                     //                            .GetDataProtectionProvider()

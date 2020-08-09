@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using ParanoidOneDriveBackup.App;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -51,6 +52,7 @@ namespace ParanoidOneDriveBackup
                 lock (_fileLock)
                 {
                     // reflect changes in the persistent store
+                    Directory.CreateDirectory(Path.GetDirectoryName(_cacheFilePath));
                     File.WriteAllBytes(_cacheFilePath,
                                         AppData.Protector.Protect(args.TokenCache.SerializeMsalV3()));
                 }

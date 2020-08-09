@@ -8,9 +8,9 @@
   },
   "MsGraph": {
     /*
-    The client (or app) id of the registered azure api
+    The client id of the registered azure api
     */
-    "ClientId": "0000-0000-0000-000",
+    "ClientId": "00000000-0000-0000-0000-000000000000",
     "Scopes": [ "Files.Read.All", "Notes.Read.All", "offline_access" ]
   },
   "Logging": {

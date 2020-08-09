@@ -5,16 +5,6 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UserSecretsId>420568ec-e9d2-4de3-818e-86ddf4fda7cb</UserSecretsId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Content Remove="appsettings.Development.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="appsettings.Development.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
   
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="3.1.6" />

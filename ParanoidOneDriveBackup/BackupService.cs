@@ -29,21 +29,43 @@ namespace ParanoidOneDriveBackup
 
         protected override async Task ExecuteAsync(CancellationToken ct)
         {
-            // Authentication
-            var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, _logger);
-            var authenticated = await authProvider.InitializeAuthentication();
-
-            // Backup
-            if (!ct.IsCancellationRequested || !authenticated)
+            try
             {
-                DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
-                if (!ct.IsCancellationRequested)
+                _logger.LogDebug("authing");
+
+                // Authentication
+                var tokenCacheHelper = new TokenCacheHelper<BackupService>(_logger);
+                var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, _logger, tokenCacheHelper);
+                var authenticated = await authProvider.InitializeAuthentication();
+
+                _logger.LogDebug("afterauthing");
+
+                // Backup
+                if (!ct.IsCancellationRequested && authenticated)
                 {
-                    var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, $@"{AppData.BackupConfig.Path}/{GetBackupDirectoryName()}");
-                    await graphHelper.DownloadAll();
+                    try
+                    {
+                        Directory.CreateDirectory(AppData.BackupConfig.Path);
+                        DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
+                        if (!ct.IsCancellationRequested)
+                        {
+                            var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, $@"{AppData.BackupConfig.Path}/{GetBackupDirectoryName()}");
+                            await graphHelper.DownloadAll();
+                        }
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogCritical("Could not access or create backup folder \"{0}\"\n", AppData.BackupConfig.Path, ex);
+                    }
                 }
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical("Unhandled exception in backup service:\n{0}", ex);
             }
 
+            _logger.LogDebug("shutting down");
             AppData.Lifetime.StopApplication();
         }
 

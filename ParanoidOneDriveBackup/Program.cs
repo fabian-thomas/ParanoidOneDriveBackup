@@ -28,10 +28,11 @@ namespace ParanoidOneDriveBackup
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    AppData.Protector = services.AddDataProtection().Services
-                                                .BuildServiceProvider()
-                                                .GetDataProtectionProvider()
-                                                .CreateProtector("ParanoidOneDriveBackup"); // TODO move to startup and change implementation
+                    AppData.Protector = DataProtectionProvider.Create("ParanoidOneDriveBackup").CreateProtector("ParanoidOneDriveBackup");// TODO move to startup and change implementation
+                    //AppData.Protector = services.AddDataProtection().Services
+                    //                            .BuildServiceProvider()
+                    //                            .GetDataProtectionProvider()
+                    //                            .CreateProtector("ParanoidOneDriveBackup"); 
                     services.AddHostedService<BackupService>();
                 });
     }

@@ -66,7 +66,7 @@ namespace ParanoidOneDriveBackup
                 if (ex.ErrorCode != null && ex.ErrorCode.Equals("client_id_must_be_guid"))
                     _logger.LogCritical("You have to specify a valid API client id.");
                 else
-                    _logger.LogCritical("Can't authenticate. Try deleting the cache .msalcache.bin3 file.\n{0}", ex);
+                    _logger.LogCritical("Can't authenticate. Try deleting the cache file \"{1}\".\n{0}", ex, Constants.TOKEN_CACHE_FILE_PATH);
             }
             return false;
         }

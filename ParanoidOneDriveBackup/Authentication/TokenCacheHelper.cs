@@ -10,13 +10,14 @@ namespace ParanoidOneDriveBackup
     public class TokenCacheHelper<T> // taken from https://docs.microsoft.com/de-de/azure/active-directory/develop/msal-net-token-cache-serialization
     {
 
-        private ILogger<T> _logger;
-        public readonly string CacheFilePath = Assembly.GetExecutingAssembly().Location + ".msalcache.bin3";
-        private readonly object FileLock = new object();
+        private readonly ILogger<T> _logger;
+        private readonly string _cacheFilePath;
+        private readonly object _fileLock = new object();
 
-        public TokenCacheHelper(ILogger<T> logger)
+        public TokenCacheHelper(ILogger<T> logger, string cacheFilePath)
         {
             _logger = logger;
+            _cacheFilePath = cacheFilePath;
         }
 
         public void EnableSerialization(ITokenCache tokenCache)
@@ -27,12 +28,12 @@ namespace ParanoidOneDriveBackup
 
         private void BeforeAccessNotification(TokenCacheNotificationArgs args)
         {
-            lock (FileLock)
+            lock (_fileLock)
             {
                 try
                 {
-                    args.TokenCache.DeserializeMsalV3(File.Exists(CacheFilePath)
-                        ? AppData.Protector.Unprotect(File.ReadAllBytes(CacheFilePath))
+                    args.TokenCache.DeserializeMsalV3(File.Exists(_cacheFilePath)
+                        ? AppData.Protector.Unprotect(File.ReadAllBytes(_cacheFilePath))
                         : null);
                 }
                 catch (CryptographicException)
@@ -47,10 +48,10 @@ namespace ParanoidOneDriveBackup
             // if the access operation resulted in a cache update
             if (args.HasStateChanged)
             {
-                lock (FileLock)
+                lock (_fileLock)
                 {
                     // reflect changes in the persistent store
-                    File.WriteAllBytes(CacheFilePath,
+                    File.WriteAllBytes(_cacheFilePath,
                                         AppData.Protector.Protect(args.TokenCache.SerializeMsalV3()));
                 }
             }

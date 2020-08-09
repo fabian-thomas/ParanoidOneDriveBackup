@@ -34,7 +34,7 @@ namespace ParanoidOneDriveBackup
                 _logger.LogDebug("authing");
 
                 // Authentication
-                var tokenCacheHelper = new TokenCacheHelper<BackupService>(_logger);
+                var tokenCacheHelper = new TokenCacheHelper<BackupService>(_logger, Constants.TOKEN_CACHE_FILE_PATH);
                 var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, _logger, tokenCacheHelper);
                 var authenticated = await authProvider.InitializeAuthentication();
 

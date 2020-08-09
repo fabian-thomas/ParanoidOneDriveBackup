@@ -16,5 +16,14 @@ namespace ParanoidOneDriveBackup
             else
                 return descriptions[0].Description;
         }
+
+        public static string GetApplicationDataFolderPath()
+        {
+            var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            if (path == "")
+                // home/<user>/.config
+                path = $@"{Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)}/.config";
+            return path;
+        }
     }
 }

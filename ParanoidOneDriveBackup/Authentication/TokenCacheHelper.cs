@@ -1,36 +1,48 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using ParanoidOneDriveBackup.App;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 
 namespace ParanoidOneDriveBackup
 {
-    static class TokenCacheHelper // taken from https://docs.microsoft.com/de-de/azure/active-directory/develop/msal-net-token-cache-serialization
+    public class TokenCacheHelper<T> // taken from https://docs.microsoft.com/de-de/azure/active-directory/develop/msal-net-token-cache-serialization
     {
 
-        public static void EnableSerialization(ITokenCache tokenCache)
+        private ILogger<T> _logger;
+        public readonly string CacheFilePath = Assembly.GetExecutingAssembly().Location + ".msalcache.bin3";
+        private readonly object FileLock = new object();
+
+        public TokenCacheHelper(ILogger<T> logger)
+        {
+            _logger = logger;
+        }
+
+        public void EnableSerialization(ITokenCache tokenCache)
         {
             tokenCache.SetBeforeAccess(BeforeAccessNotification);
             tokenCache.SetAfterAccess(AfterAccessNotification);
         }
 
-
-        public static readonly string CacheFilePath = Assembly.GetExecutingAssembly().Location + ".msalcache.bin3";
-
-        private static readonly object FileLock = new object();
-
-
-        private static void BeforeAccessNotification(TokenCacheNotificationArgs args)
+        private void BeforeAccessNotification(TokenCacheNotificationArgs args)
         {
             lock (FileLock)
             {
-                args.TokenCache.DeserializeMsalV3(File.Exists(CacheFilePath)
+                try
+                {
+                    args.TokenCache.DeserializeMsalV3(File.Exists(CacheFilePath)
                         ? AppData.Protector.Unprotect(File.ReadAllBytes(CacheFilePath))
                         : null);
+                }
+                catch (CryptographicException)
+                {
+                    _logger.LogWarning("MSAL token cache is invalid. Removing cache file. You need to reauthenticate.");
+                }
             }
         }
 
-        private static void AfterAccessNotification(TokenCacheNotificationArgs args)
+        private void AfterAccessNotification(TokenCacheNotificationArgs args)
         {
             // if the access operation resulted in a cache update
             if (args.HasStateChanged)

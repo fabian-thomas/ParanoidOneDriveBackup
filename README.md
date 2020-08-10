@@ -3,7 +3,7 @@ Backup your OneDrive cloud files to any (Linux) Server
 
 ## Motivation
 
-It happened two times to me that I deleted my whole OneDrive cloud files by making a mistake while using some OneDrive client on Linux. Altough you can recover your cloud files from the trash in OneDrive it's very annoying to do that file by file and if you recover all files you have a lot of old trash files in your OneDrive that you deleted before. Another problem is that deleted OneNote notebooks don't go to the trash if you delete them by using a third party sync client. This application tries to prevent such issues by giving the possibility to backup your cloud files (including your notebooks) any time you want to some (Linux) server. 
+It happened two times to me that I deleted my whole OneDrive cloud files by making a mistake while using some OneDrive client on Linux. Altough you can recover your cloud files from the trash in OneDrive it's very annoying to do that file by file and if you recover all files you have a lot of old trash files in your OneDrive that you deleted before. Another problem is that deleted OneNote notebooks don't go to the trash if you delete them by using a third party sync client. This application tries to prevent such issues by giving the possibility to backup your cloud files (including your notebooks) any time you want to any Linux or Windows PC/Server. 
 
 ## Prerequisites
 
@@ -36,23 +36,31 @@ If you want your service to start on startup of your system you can call `system
 
 currently not supported as a service (coming soon)
 
+## Configuration
 
-
-## MS Graph
+### MS Graph
 
 The application uses the Microsoft Graph API to backup your files. 
 
 You can try using my registered app with the client id: ------------------------------------------------------------------------------
 
-If this client id does not work for you, you can register your own app following [this article](https://docs.microsoft.com/de-de/graph/auth-register-app-v2). Make sure that `https://login.microsoftonline.com/common/oauth2/nativeclient` is activated as redirect URI and that the checkbox "Default client type" is on "Yes" (both settings can be found at the "Authentication" tab).
+If this client id does not work for you, you can register your own app following [this article](https://docs.microsoft.com/de-de/graph/auth-register-app-v2). Make sure that `https://login.microsoftonline.com/common/oauth2/nativeclient` is activated as redirect URI and that the checkbox "Default client type" is on "Yes" (both settings can be found in the "Authentication" tab).
 
-Additionally you need to specify the necessary scopes of your the application. You can do that at the "API permissions" tab. Search for the scopes that are specified in the default config file and add them to your app's permissions. Finally copy the client id at the "Overview" tab and insert it in your config file.
+Additionally you need to specify the necessary scopes of your the application. You can do that in the "API permissions" tab. Search for the scopes that are specified in the default config file and add them to your app's permissions. Finally copy the client id at the "Overview" tab and insert it in your config file.
+
+### Ignore File
+
+The ignore file works just like [gitignore](https://git-scm.com/docs/gitignore). All files or folders that match the rules in the ignore file are not being downloaded.
 
 ## Implementation Notes
 
 - The config file is stored at:
   - `~/.config/ParanoidOneDriveBackup/config.json` (Linux)
   - `%localappdata%/ParanoidOneDriveBackup/config.json` (Windows)
+- The ignore file is stored at:
+  - `~/.config/ParanoidOneDriveBackup/ignore` (Linux)
+  - `%localappdata%/ParanoidOneDriveBackup/ignore` (Windows)
 - The token cache file is stored at:
   - `~/.cache/ParanoidOneDriveBackup/token_cache.bin3` (Linux)
   - `%localappdata%/ParanoidOneDriveBackup/token_cache.bin3` (Windows)
+- The deleting of the oldest backups operates on the folder names of the backups so it's safe to just rename a backup folder to keep it "forever". Folders with invalid suffixes are being ignored.

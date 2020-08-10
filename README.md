@@ -42,11 +42,29 @@ currently not supported as a service (coming soon)
 
 The application uses the Microsoft Graph API to backup your files. 
 
-You can try using my registered app with the client id: ------------------------------------------------------------------------------
+#### Permissions
 
-If this client id does not work for you, you can register your own app following [this article](https://docs.microsoft.com/de-de/graph/auth-register-app-v2). Make sure that `https://login.microsoftonline.com/common/oauth2/nativeclient` is activated as redirect URI and that the checkbox "Default client type" is on "Yes" (both settings can be found in the "Authentication" tab).
+The app uses 3 permissions:
 
-Additionally you need to specify the necessary scopes of your the application. You can do that in the "API permissions" tab. Search for the scopes that are specified in the default config file and add them to your app's permissions. Finally copy the client id at the "Overview" tab and insert it in your config file.
+| Permission     | Description                            |
+| -------------- | -------------------------------------- |
+| Files.Read     | needed to download your OneDrive files |
+| Notes.Read     | needed to download your notebooks      |
+| offline_access | needed to stay logged in               |
+
+#### Client Id
+
+You can try using my registered app with the client id: `ae032616-b374-484d-8fef-aba26e502f4a`
+
+If this client id does not work for you, you can register your own app following [this article](https://docs.microsoft.com/de-de/graph/auth-register-app-v2) and the following instructions:
+
+On the "Register an application" page add the redirect URL `https://login.microsoftonline.com/common/oauth2/nativeclient` as "Public client/native (mobile & desktop)".
+
+On the "Authentication" tab select "Yes" for "Default client type".
+
+Additionally you need to specify the necessary scopes of your the application. You can do that in the "API permissions" tab. Search for the scopes that are specified in the default config file (ParanoidOneDriveBackup/Resources/config.json) and add them to your app's permissions.
+
+Finally copy the client id at the "Overview" tab and insert it in your config file.
 
 ### Ignore File
 

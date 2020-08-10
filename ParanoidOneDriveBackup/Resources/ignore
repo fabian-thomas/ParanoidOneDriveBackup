@@ -1,0 +1,4 @@
+﻿# This file works just like the .gitignore file (https://git-scm.com/docs/gitignore)
+# some examples:
+# test.txt                 exclude all files with the name "test.txt" from backup
+# test                     exclude all dirs and the subdirs with the name test from backup

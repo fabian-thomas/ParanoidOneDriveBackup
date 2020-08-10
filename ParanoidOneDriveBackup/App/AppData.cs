@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.DataProtection;
+﻿using MAB.DotIgnore;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,6 +13,7 @@ namespace ParanoidOneDriveBackup.App
         public static BackupConfig BackupConfig = new BackupConfig();
         public static IHostApplicationLifetime Lifetime;
         public static IDataProtector Protector;
+        public static IgnoreList Ignore;
 
         public static void BindConfig(IConfiguration config)
         {

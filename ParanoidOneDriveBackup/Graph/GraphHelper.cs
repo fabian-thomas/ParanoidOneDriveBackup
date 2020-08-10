@@ -37,6 +37,13 @@ namespace ParanoidOneDriveBackup
 
             if (item.Folder != null)
             {
+                // check ignore
+                if (AppData.Ignore.IsIgnored(childRelativePath, true))
+                {
+                    _logger.LogDebug("Ignoring folder: \"{0}\"", childRelativePath);
+                    return;
+                }
+
                 // create directory and download all children recursively
                 if (item.Root != null)
                 {
@@ -67,7 +74,7 @@ namespace ParanoidOneDriveBackup
                         {
                             try
                             {
-                                Directory.CreateDirectory(_rootPath + childRelativePath);
+                                Directory.CreateDirectory(Path.Combine(_rootPath, childRelativePath));
                                 _logger.LogDebug("Created Directory: \"{0}\"", childRelativePath);
                             }
                             catch (IOException ex)
@@ -96,12 +103,19 @@ namespace ParanoidOneDriveBackup
             }
             else if (item.File != null)
             {
+                // check ignore
+                if (AppData.Ignore.IsIgnored(childRelativePath, false))
+                {
+                    _logger.LogDebug("Ignoring file: \"{0}\"", childRelativePath);
+                    return;
+                }
+
                 // download single file
                 try
                 {
                     if (!_ct.IsCancellationRequested)
                     {
-                        var fileStream = File.Create(_rootPath + childRelativePath);
+                        var fileStream = File.Create(Path.Combine(_rootPath, childRelativePath));
 
                         var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content
                                         .Request()
@@ -128,6 +142,13 @@ namespace ParanoidOneDriveBackup
             }
             else if (item.Package != null && item.Package.Type.Equals("oneNote"))
             {
+                // check ignore
+                //if (AppData.Ignore.IsIgnored(childRelativePath, false))
+                //{
+                //    _logger.LogDebug("Ignored file: \"{0}\"", childRelativePath);
+                //    return;
+                //}
+
                 _logger.LogWarning("Onenote file \"{0}\"", childRelativePath);
                 return;
                 // onenote notebook

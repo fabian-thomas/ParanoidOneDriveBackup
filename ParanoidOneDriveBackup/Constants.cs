@@ -9,6 +9,8 @@ namespace ParanoidOneDriveBackup
 
         public const string CONFIG_FILE_NAME = "config.json";
 
+        public const string IGNORE_FILE_NAME = "ignore";
+
         public const string BACKUP_DIR_PREFIX = "OneDrive_";
 
         /*
@@ -29,6 +31,11 @@ namespace ParanoidOneDriveBackup
         public static string CONFIG_FILE_PATH
         {
             get => Path.Combine(APP_DATA_FOLDER_PATH, CONFIG_FILE_NAME);
+        }
+
+        public static string IGNORE_FILE_PATH
+        {
+            get => Path.Combine(APP_DATA_FOLDER_PATH, IGNORE_FILE_NAME);
         }
 
         public const string TOKEN_CACHE_FILE_NAME = "token_cache.bin3";

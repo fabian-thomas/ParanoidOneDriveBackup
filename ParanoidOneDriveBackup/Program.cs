@@ -24,7 +24,9 @@ namespace ParanoidOneDriveBackup
                 {
                     if (!File.Exists(Constants.CONFIG_FILE_PATH))
                     {
-                        File.Copy(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Constants.CONFIG_FILE_NAME), Constants.CONFIG_FILE_PATH);
+                        File.Copy(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", Constants.CONFIG_FILE_NAME), Constants.CONFIG_FILE_PATH);
+                        if (!File.Exists(Constants.IGNORE_FILE_PATH))
+                            File.Copy(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources", Constants.IGNORE_FILE_NAME), Constants.IGNORE_FILE_PATH);
                         Console.WriteLine($"No config file found. The default config file has been copied to \"{Constants.CONFIG_FILE_PATH}\". Modify it and restart the application.");
                         Console.WriteLine();
                         Console.WriteLine("Press any key to exit...");

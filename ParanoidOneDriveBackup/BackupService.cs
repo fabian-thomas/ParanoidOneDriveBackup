@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using MAB.DotIgnore;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -123,6 +124,12 @@ namespace ParanoidOneDriveBackup
 
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
+            // read ignore file
+            if (File.Exists(Constants.IGNORE_FILE_PATH))
+                AppData.Ignore = new IgnoreList(Constants.IGNORE_FILE_PATH);
+            else
+                AppData.Ignore = new IgnoreList();
+
             await ExecuteAsync(cancellationToken);
         }
     }

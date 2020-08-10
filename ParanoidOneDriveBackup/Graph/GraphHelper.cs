@@ -20,18 +20,20 @@ namespace ParanoidOneDriveBackup
         private List<Task> downloadTasks;
         private CancellationToken _ct;
         private string _rootPath;
+        private int _maxParallelDownloadTasks;
 
-        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath)
+        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath, int maxParallelDownloadTasks)
         {
             _graphClient = new GraphServiceClient(authProvider);
             _logger = logger;
             _ct = ct;
             _rootPath = rootPath;
+            _maxParallelDownloadTasks = maxParallelDownloadTasks;
         }
 
         private async Task DownloadAllRecursive(DriveItem item, string parentDirectoryRelativePath)
         {
-            var childRelativePath = $"{parentDirectoryRelativePath}/{item.Name}";
+            var childRelativePath = Path.Combine(parentDirectoryRelativePath, item.Name);
 
             if (item.Folder != null)
             {
@@ -76,7 +78,15 @@ namespace ParanoidOneDriveBackup
 
                         if (!_ct.IsCancellationRequested)
                             foreach (var child in children)
+                            {
+                                downloadTasks.RemoveAll(x => x.IsCompleted);
+                                if (_maxParallelDownloadTasks == 0 || downloadTasks.Count > _maxParallelDownloadTasks)
+                                {
+                                    _logger.LogDebug("Maximum number of download tasks reached. Awating any task to finish.");
+                                    downloadTasks.RemoveAt(Task.WaitAny(downloadTasks.ToArray(), _ct));
+                                }
                                 downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
+                            }
                     }
                 }
                 catch (ServiceException ex)
@@ -217,7 +227,7 @@ namespace ParanoidOneDriveBackup
                 await DownloadAllRecursive(_graphClient.Me.Drive.Root.Request().GetAsync().Result, "");
 
                 _logger.LogDebug("Awaiting downloads to finish...");
-                Task.WaitAll(downloadTasks.ToArray());
+                Task.WaitAll(downloadTasks.ToArray(), _ct);
 
                 _logger.LogInformation("Backup finished.");
             }

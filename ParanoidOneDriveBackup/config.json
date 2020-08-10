@@ -4,7 +4,12 @@
     /*
     How many backups should be remained before deleting the oldest
     */
-    "RemainMaximum": 4
+    "RemainMaximum": 4,
+    /*
+    Maximum number of parallel download tasks started on backup
+    0: Infinity
+    */
+    "MaxParallelDownloadTasks": 10
   },
   "MsGraph": {
     /*

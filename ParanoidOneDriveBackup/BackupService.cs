@@ -49,7 +49,7 @@ namespace ParanoidOneDriveBackup
                         DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
                         if (!ct.IsCancellationRequested)
                         {
-                            var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, $@"{AppData.BackupConfig.Path}/{GetBackupDirectoryName()}");
+                            var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, Path.Combine(AppData.BackupConfig.Path, GetBackupDirectoryName()), AppData.BackupConfig.MaxParallelDownloadTasks);
                             await graphHelper.DownloadAll();
                         }
                     }
@@ -96,7 +96,7 @@ namespace ParanoidOneDriveBackup
                 try
                 {
                     dirDict.Remove(oldest.Key);
-                    Directory.Delete($@"{path}/{oldest.Key}", true);
+                    Directory.Delete(Path.Combine(path, oldest.Key), true);
                     _logger.LogInformation("Removed backup \"{0}\"", oldest.Key);
                     removed++;
                 }
@@ -123,7 +123,7 @@ namespace ParanoidOneDriveBackup
 
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
-            ExecuteAsync(cancellationToken);
+            await ExecuteAsync(cancellationToken);
         }
     }
 }

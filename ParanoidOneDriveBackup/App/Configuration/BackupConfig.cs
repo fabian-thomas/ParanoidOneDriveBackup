@@ -7,5 +7,6 @@ namespace ParanoidOneDriveBackup.App.Configuration
     {
         public string Path { get; set; }
         public int RemainMaximum { get; set; }
+        public int MaxParallelDownloadTasks { get; set; }
     }
 }

@@ -39,7 +39,7 @@ namespace ParanoidOneDriveBackup
                 var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, _logger, tokenCacheHelper);
                 var authenticated = await authProvider.InitializeAuthentication();
 
-                _logger.LogDebug("afterauthing");
+                _logger.LogDebug("after authing");
 
                 // Backup
                 if (!ct.IsCancellationRequested && authenticated)
@@ -50,7 +50,9 @@ namespace ParanoidOneDriveBackup
                         DeleteOldestFolders(AppData.BackupConfig.Path, AppData.BackupConfig.RemainMaximum, ct);
                         if (!ct.IsCancellationRequested)
                         {
-                            var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, Path.Combine(AppData.BackupConfig.Path, GetBackupDirectoryName()), AppData.BackupConfig.MaxParallelDownloadTasks);
+                            // directy info class is used to normalize slashes in path
+                            var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, new DirectoryInfo(Path.Combine(AppData.BackupConfig.Path, GetBackupDirectoryName())).FullName, AppData.BackupConfig.MaxParallelDownloadTasks,
+                                AppData.BackupConfig.ProgressReporting.ProgressReportingSteps, AppData.BackupConfig.ProgressReporting.Enabled);
                             await graphHelper.DownloadAll();
                         }
                     }

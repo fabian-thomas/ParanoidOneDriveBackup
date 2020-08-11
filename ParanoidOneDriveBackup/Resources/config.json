@@ -9,7 +9,14 @@
     Maximum number of parallel download tasks started on backup
     0: Infinity
     */
-    "MaxParallelDownloadTasks": 10
+    "MaxParallelDownloadTasks": 10,
+    "ProgressReporting": {
+      "Enabled": true,
+      /*
+		  0.1 means the progress is reported in 10% steps
+		  */
+      "ProgressReportingSteps": 0.1
+    }
   },
   "MsGraph": {
     /*

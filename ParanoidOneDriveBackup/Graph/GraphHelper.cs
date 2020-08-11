@@ -21,14 +21,18 @@ namespace ParanoidOneDriveBackup
         private CancellationToken _ct;
         private string _rootPath;
         private int _maxParallelDownloadTasks;
+        private decimal _reportingSteps;
+        private bool _reportingEnabled;
 
-        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath, int maxParallelDownloadTasks)
+        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath, int maxParallelDownloadTasks, decimal reportingSteps, bool reportingEnabled)
         {
             _graphClient = new GraphServiceClient(authProvider);
             _logger = logger;
             _ct = ct;
             _rootPath = rootPath;
             _maxParallelDownloadTasks = maxParallelDownloadTasks;
+            _reportingSteps = reportingSteps;
+            _reportingEnabled = reportingEnabled;
         }
 
         private async Task DownloadAllRecursive(DriveItem item, string parentDirectoryRelativePath)
@@ -86,13 +90,25 @@ namespace ParanoidOneDriveBackup
                         if (!_ct.IsCancellationRequested)
                             foreach (var child in children)
                             {
-                                downloadTasks.RemoveAll(x => x.IsCompleted);
-                                if (_maxParallelDownloadTasks == 0 || downloadTasks.Count > _maxParallelDownloadTasks)
+                                if (child.Folder != null)
                                 {
-                                    _logger.LogDebug("Maximum number of download tasks reached. Awating any task to finish.");
-                                    downloadTasks.RemoveAt(Task.WaitAny(downloadTasks.ToArray(), _ct));
+                                    await DownloadAllRecursive(child, childRelativePath);
                                 }
-                                downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
+                                else
+                                {
+                                    if (_maxParallelDownloadTasks != 0)
+                                    {
+                                        downloadTasks.RemoveAll(x => x.IsCompleted);
+                                        if (downloadTasks.Count >= _maxParallelDownloadTasks)
+                                        {
+                                            _logger.LogDebug("Maximum number of download tasks reached. Awating any task to finish.");
+                                            var index = Task.WaitAny(downloadTasks.ToArray(), _ct);
+                                            if (index >= 0 && index < downloadTasks.Count)
+                                                downloadTasks.RemoveAt(index);
+                                        }
+                                    }
+                                    downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
+                                }
                             }
                     }
                 }
@@ -117,9 +133,23 @@ namespace ParanoidOneDriveBackup
                     {
                         var fileStream = File.Create(Path.Combine(_rootPath, childRelativePath));
 
-                        var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content
-                                        .Request()
-                                        .GetAsync();
+                        var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content.Request()
+                                                                                              .GetAsync();
+
+                        try
+                        {
+                            var driveItem = await _graphClient.Me.Drive.Items[item.Id].Request()
+                                                                                      .GetAsync();
+                            if (driveItem.Size.HasValue)
+                                ReportProgress(driveItem.Size.Value);
+                            else
+                                _logger.LogWarning("File \"{0}\" has no size. Progress may be inaccurate.", childRelativePath);
+                        }
+                        catch (ServiceException ex)
+                        {
+                            _logger.LogWarning("Could not update progress of file \"{0}\".\n{1}", childRelativePath, ex);
+                        }
+
 
                         if (!_ct.IsCancellationRequested)
                         {
@@ -148,6 +178,17 @@ namespace ParanoidOneDriveBackup
                 //    _logger.LogDebug("Ignored file: \"{0}\"", childRelativePath);
                 //    return;
                 //}
+                var x = (await _graphClient.Me.Drive.Items[item.Id]
+                                       .Request()
+                                       .GetAsync());
+                if (x.Size.HasValue)
+                {
+                    ReportProgress(x.Size.Value);
+                }
+                else
+                    _logger.LogCritical("dfhjash");
+
+
 
                 _logger.LogWarning("Onenote file \"{0}\"", childRelativePath);
                 return;
@@ -207,7 +248,7 @@ namespace ParanoidOneDriveBackup
 
                     stream = await _graphClient.Me.Onenote.Resources[pags.First().Id].Content
                                     .Request()
-                                                        .GetAsync();
+                                                                                        .GetAsync();
 
 
                     filePath = parentDirectoryRelativePath + @"/TestPage2.one";
@@ -237,6 +278,10 @@ namespace ParanoidOneDriveBackup
             }
         }
 
+        private long _downloaded;
+        private long _total;
+        private decimal _lastReported;
+
         public async Task DownloadAll()
         {
             try
@@ -245,7 +290,21 @@ namespace ParanoidOneDriveBackup
 
                 downloadTasks = new List<Task>();
 
-                await DownloadAllRecursive(_graphClient.Me.Drive.Root.Request().GetAsync().Result, "");
+                var root = _graphClient.Me.Drive.Root.Request().GetAsync().Result;
+
+                if (root.Size.HasValue && _reportingEnabled)
+                {
+                    _lastReported = _downloaded = 0;
+                    _total = root.Size.Value;
+                }
+                else
+                {
+                    if (_reportingEnabled)
+                        _logger.LogWarning("Could not get size of root folder. Progress is not printed.");
+                    _total = 0;
+                }
+
+                await DownloadAllRecursive(root, "");
 
                 _logger.LogDebug("Awaiting downloads to finish...");
                 Task.WaitAll(downloadTasks.ToArray(), _ct);
@@ -255,6 +314,20 @@ namespace ParanoidOneDriveBackup
             catch (ServiceException ex)
             {
                 _logger.LogCritical("Could not get root item of OneDrive. Nothing could be downloaded.\n{0}", ex);
+            }
+        }
+
+        private void ReportProgress(long finishedDownloading)
+        {
+            if (_total != 0)
+            {
+                _downloaded += finishedDownloading;
+                var div = decimal.Divide(_downloaded, _total);
+                if (div.CompareTo(_lastReported + _reportingSteps) != -1)
+                {
+                    _lastReported = _reportingSteps * Math.Floor(div / _reportingSteps);
+                    _logger.LogInformation($"{_lastReported * 100}% - {_downloaded / 1000000}/{_total / 1000000}Mb");
+                }
             }
         }
 

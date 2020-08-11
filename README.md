@@ -20,7 +20,7 @@ Download the latest release files and extract them to `~/ParanoidOneDriveBackup`
 
 Run the app for the first time: `~/ParanoidOneDriveBackup/ParanoidOneDriveBackup`
 
-The app copies the default config file to your application data folder. Edit it to your needs: `nano ~/.config/ParanoidOneDriveBackup/.config.json`. You can find more information to the MS graph client id at the MS graph section of this readme.
+The app copies the default config file to your application data folder. Edit it to your needs: `nano ~/.config/ParanoidOneDriveBackup/.config.json`. You can find more information to the MS graph client id at the [MS graph section](https://github.com/Thomi7/ParanoidOneDriveBackup#ms-graph) of this readme.
 
 Now run the app another time. If your config file is valid the app prints instructions on how to authorize in the console. Once you have authorized the app to read your OneDrive files it should start the first backup directly. (You can cancel it if you want)
 

@@ -56,7 +56,7 @@ The app uses 3 permissions:
 
 You can try using my registered app with the client id: `ae032616-b374-484d-8fef-aba26e502f4a`
 
-If this client id does not work for you, you can register your own app following [this article](https://docs.microsoft.com/de-de/graph/auth-register-app-v2) and the following instructions:
+If this client id does not work for you, you can register your own app following [this article](https://docs.microsoft.com/de-de/graph/auth-register-app-v2) and these instructions:
 
 On the "Register an application" page add the redirect URL `https://login.microsoftonline.com/common/oauth2/nativeclient` as "Public client/native (mobile & desktop)".
 

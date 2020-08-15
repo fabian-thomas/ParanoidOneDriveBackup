@@ -9,5 +9,6 @@ namespace ParanoidOneDriveBackup.App.Configuration
         public int RemainMaximum { get; set; }
         public int MaxParallelDownloadTasks { get; set; }
         public ProgressReporting ProgressReporting { get; set; }
+        public bool NotebookDownloadEnabled { get; set; }
     }
 }

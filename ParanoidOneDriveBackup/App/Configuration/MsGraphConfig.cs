@@ -3,9 +3,7 @@
 namespace ParanoidOneDriveBackup.App.Configuration
 {
     [Description("MsGraph")]
-    class MsGraphConfig
+    class MsGraphConfig : MsGraph
     {
-        public string ClientId { get; set; }
-        public string[] Scopes { get; set; }
     }
 }

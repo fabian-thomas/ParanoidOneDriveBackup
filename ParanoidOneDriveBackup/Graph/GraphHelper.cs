@@ -4,10 +4,13 @@ using ParanoidOneDriveBackup.App;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using Directory = System.IO.Directory;
 using File = System.IO.File;
 
@@ -23,8 +26,10 @@ namespace ParanoidOneDriveBackup
         private int _maxParallelDownloadTasks;
         private decimal _reportingSteps;
         private bool _reportingEnabled;
+        private string _exportImportToken;
+        private HttpClient _httpClient;
 
-        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath, int maxParallelDownloadTasks, decimal reportingSteps, bool reportingEnabled)
+        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath, int maxParallelDownloadTasks, decimal reportingSteps, bool reportingEnabled, string exportImportToken)
         {
             _graphClient = new GraphServiceClient(authProvider);
             _logger = logger;
@@ -33,6 +38,8 @@ namespace ParanoidOneDriveBackup
             _maxParallelDownloadTasks = maxParallelDownloadTasks;
             _reportingSteps = reportingSteps;
             _reportingEnabled = reportingEnabled;
+            _exportImportToken = exportImportToken;
+            _httpClient = new HttpClient();
         }
 
         private async Task DownloadAllRecursive(DriveItem item, string parentDirectoryRelativePath)
@@ -171,101 +178,73 @@ namespace ParanoidOneDriveBackup
             }
             else if (item.Package != null && item.Package.Type.Equals("oneNote"))
             {
-                // check ignore
-                //if (AppData.Ignore.IsIgnored(childRelativePath, false))
-                //{
-                //    _logger.LogDebug("Ignored file: \"{0}\"", childRelativePath);
-                //    return;
-                //}
-                var x = (await _graphClient.Me.Drive.Items[item.Id]
-                                       .Request()
-                                       .GetAsync());
-                if (x.Size.HasValue)
-                {
-                    ReportProgress(x.Size.Value);
-                }
+                if (AppData.Ignore.IsIgnored(childRelativePath, false))
+                    _logger.LogDebug("Ignored notebook: \"{0}\"", childRelativePath);
                 else
-                    _logger.LogCritical("dfhjash");
-
-
-
-                _logger.LogWarning("Onenote file \"{0}\"", childRelativePath);
-                return;
-                // onenote notebook
-
-                // TODO
-                //throw new Exception();
-
-
-                var ite = _graphClient.Me.Drive.Items[item.Id];
-                var c = ite.Content;
-                var r = c.Request();
-                //graphClient.Me.Onenote.
-                //var stream3 = await r
-                //                .GetAsync();
-
-
-                try
                 {
-                    var filePath = parentDirectoryRelativePath + @"/TestPage.one";
-                    //var filePath = parentDirectoryPath + @"/" + item.Name;
-                    var fileStream = File.Create(filePath);
+                    if (!AppData.BackupConfig.NotebookDownloadEnabled)
+                        _logger.LogDebug("Skipping download of onenote file \"{0}\"", childRelativePath);
+                    else
+                    {
+                        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+                        {
+                            { "provider", "url" },
+                            {"files", "{\"items\": [{\"name\":\"" + item.Name + "\",\"docId\":\"https://api.onedrive.com/v1.0/drive/items/" + item.Id + "\",\"isFolder\":true}]}" },
+                            { "accessToken", _exportImportToken }
+                        });
 
-                    //var stream = await graphClient.Me.Drive.Items[item.Id].Content
-                    //                .Request()
-                    //                .GetAsync();
+                        if (!_ct.IsCancellationRequested)
+                        {
+                            var notebook = await _httpClient.PostAsync(AppData.ExportImportConfig.ZipApiUrl, content);
+                            var contentStream = await notebook.Content.ReadAsStreamAsync();
 
+                            var zipPath = Path.Combine(_rootPath, childRelativePath + ".zip");
+                            var fileStream = Helper.MakeUnique(zipPath, "_notebook"); // avoid errors when there is a zip file with the exact same name in the same folder
 
+                            if (!_ct.IsCancellationRequested)
+                            {
+                                _logger.LogDebug("Downloading notebook: \"{0}\"", childRelativePath);
 
-                    var notebooks = await _graphClient.Me.Onenote.Notebooks.Request().GetAsync();
-                    var note = notebooks.First();
-                    Microsoft.Graph.Notebook notebook = await _graphClient.Me.Onenote.Notebooks[note.Id].Request().GetAsync();
+                                contentStream.Seek(0, SeekOrigin.Begin);
+                                contentStream.CopyTo(fileStream);
+                                fileStream.Close();
 
-                    var pags = await _graphClient.Me.Onenote.Pages.Request().Filter("title eq 'TestPage'").GetAsync();
-
-                    var stream = await _graphClient.Me.Onenote.Pages[pags.First().Id].Content.Request().GetAsync();
-
-
-                    stream.Seek(0, SeekOrigin.Begin);
-                    stream.CopyTo(fileStream);
-                    fileStream.Close();
-
-                    //var result = await graphClient.Me.Onenote.Pages.Request().GetAsync();
-                    //foreach (var page in result)
-                    //{
-
-                    //    //download Page content
-                    //    var message = new HttpRequestMessage(HttpMethod.Get, page.ContentUrl);
-                    //    await graphClient.AuthenticationProvider.AuthenticateRequestAsync(message);
-                    //    var response = await graphClient.HttpProvider.SendAsync(message);
-                    //    var content = await response.Content.ReadAsStringAsync();  //get content as HTML 
-
-                    //}
-
-
-                    var res = await _graphClient.Me.Onenote.Resources.Request().GetAsync();
-
-                    stream = await _graphClient.Me.Onenote.Resources[pags.First().Id].Content
-                                    .Request()
-                                                                                        .GetAsync();
-
-
-                    filePath = parentDirectoryRelativePath + @"/TestPage2.one";
-                    fileStream = File.Create(filePath);
-                    stream.Seek(0, SeekOrigin.Begin);
-                    stream.CopyTo(fileStream);
-                    fileStream.Close();
-
-                    //var stream = await graphClient.Me.Drive.Items[id].Content.Request().GetAsync();
-
-                    //var fileStream = File.Create(Directory.GetCurrentDirectory() + "/" + file);
-
-                }
-                catch (ServiceException ex)
-                {
-
+                                try
+                                {
+                                    using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+                                    {
+                                        if (archive.Entries.Where(x => x.Name.Contains("Error.txt") || x.Name.Contains("Errors.txt")).Any())
+                                        {
+                                            _logger.LogError("There was an error downloading the notebook \"{0}\". Check the zip file \"{1}\" for additional info.", item.Name, zipPath);
+                                        }
+                                    }
+                                }
+                                catch (InvalidDataException e)
+                                {
+                                    _logger.LogError("Zip file \"{0}\" of notebook \"{1}\" is corrupt.", zipPath, item.Name);
+                                }
+                            }
+                        }
+                    }
                 }
 
+                // update progress
+                if (!_ct.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var driveItem = await _graphClient.Me.Drive.Items[item.Id].Request()
+                                                                                  .GetAsync();
+                        if (driveItem.Size.HasValue)
+                            ReportProgress(driveItem.Size.Value);
+                        else
+                            _logger.LogWarning("Notebook \"{0}\" has no size. Progress may be inaccurate.", childRelativePath);
+                    }
+                    catch (ServiceException ex)
+                    {
+                        _logger.LogWarning("Could not update progress of notebook \"{0}\".\n{1}", childRelativePath, ex);
+                    }
+                }
             }
             else
             {
@@ -273,7 +252,6 @@ namespace ParanoidOneDriveBackup
                     _logger.LogError("File \"{0}\" is not supported.", childRelativePath);
                 else
                     _logger.LogError("File \"{1}\" of type {0} is not supported.", item.Package.Type, childRelativePath);
-
             }
         }
 

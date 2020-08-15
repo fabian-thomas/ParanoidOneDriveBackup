@@ -2,6 +2,10 @@
   "Backup": {
     "Path": "/path/to/backups/folder",
     /*
+    Needs authentication to the MS importexport app. See the readme for more information.
+    */
+    "NotebookDownloadEnabled": true,
+    /*
     How many backups should be remained before deleting the oldest
     */
     "RemainMaximum": 4,
@@ -24,6 +28,14 @@
     */
     "ClientId": "ae032616-b374-484d-8fef-aba26e502f4a",
     "Scopes": [ "Files.Read", "Notes.Read", "offline_access" ]
+  },
+  "ExportImport": {
+    /*
+    The client id of the MS exportimport app. Should not be edited.
+    */
+    "ClientId": "39cd23b6-3b00-4a00-a393-b4bca915aad6",
+    "Scopes": [ "OneDrive_Implicit.Access", "offline_access" ],
+    "ZipApiUrl": "https://southcentralus1-mediap.svc.ms/transform/zip?cs=V2VifE9EQw=="
   },
   "Logging": {
     "LogLevel": {

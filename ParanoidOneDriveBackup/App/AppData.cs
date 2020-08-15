@@ -11,6 +11,7 @@ namespace ParanoidOneDriveBackup.App
     {
         public static MsGraphConfig MsGraphConfig = new MsGraphConfig();
         public static BackupConfig BackupConfig = new BackupConfig();
+        public static ExportImportConfig ExportImportConfig = new ExportImportConfig();
         public static IHostApplicationLifetime Lifetime;
         public static IDataProtector Protector;
         public static IgnoreList Ignore;
@@ -19,7 +20,7 @@ namespace ParanoidOneDriveBackup.App
         {
             ConfigurationBinder.Bind(config, Helper.GetDescription(typeof(MsGraphConfig)), MsGraphConfig);
             ConfigurationBinder.Bind(config, Helper.GetDescription(typeof(BackupConfig)), BackupConfig);
-
+            ConfigurationBinder.Bind(config, Helper.GetDescription(typeof(ExportImportConfig)), ExportImportConfig);
 
             // TODO check if values in config are correct
         }

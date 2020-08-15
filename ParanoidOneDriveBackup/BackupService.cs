@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using MAB.DotIgnore;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -39,6 +41,28 @@ namespace ParanoidOneDriveBackup
                 var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, _logger, tokenCacheHelper);
                 var authenticated = await authProvider.InitializeAuthentication();
 
+                // authenticate exportimport for notebook downloads
+                string exportImportToken = null;
+                if (AppData.BackupConfig.NotebookDownloadEnabled)
+                {
+                    if (!File.Exists(Constants.EXPORT_IMPORT_TOKEN_CACHE_FILE_PATH) || true)
+                    {
+                        Console.WriteLine($"Log in to your microsoft account and navigate to https://login.live.com/oauth20_authorize.srf?client_id={AppData.ExportImportConfig.ClientId}&scope={string.Join(",", AppData.ExportImportConfig.Scopes)}&response_type=token in a browser. Paste the redirected url in the console.");
+
+                        // response should look like this: https://www.onenote.com/notebooks/exportimport#access_token=<token>&token_type=bearer&expires_in=3600&scope=onedrive_implicit.access&user_id=<user_id>
+                        exportImportToken = HttpUtility.ParseQueryString(new Uri(Console.ReadLine()).Fragment.Remove(0, 1)).Get("access_token"); // remove proceeding # from fragment
+
+                        File.WriteAllText(Constants.EXPORT_IMPORT_TOKEN_CACHE_FILE_PATH, exportImportToken);
+                    }
+                    else
+                    {
+                        exportImportToken = File.ReadAllText(Constants.EXPORT_IMPORT_TOKEN_CACHE_FILE_PATH);
+                    }
+
+                    if (exportImportToken == null)
+                        throw new NotImplementedException(); //TODO
+                }
+
                 _logger.LogDebug("after authing");
 
                 // Backup
@@ -52,7 +76,7 @@ namespace ParanoidOneDriveBackup
                         {
                             // directy info class is used to normalize slashes in path
                             var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, new DirectoryInfo(Path.Combine(AppData.BackupConfig.Path, GetBackupDirectoryName())).FullName, AppData.BackupConfig.MaxParallelDownloadTasks,
-                                AppData.BackupConfig.ProgressReporting.ProgressReportingSteps, AppData.BackupConfig.ProgressReporting.Enabled);
+                                AppData.BackupConfig.ProgressReporting.ProgressReportingSteps, AppData.BackupConfig.ProgressReporting.Enabled, exportImportToken);
                             await graphHelper.DownloadAll();
                         }
                     }

@@ -13,6 +13,8 @@ namespace ParanoidOneDriveBackup.App
 
         public const string TOKEN_CACHE_FILE_NAME = "token_cache.bin3";
 
+        public const string EXPORT_IMPORT_TOKEN_CACHE_FILE_NAME = "ei_token_cache.bin3";
+
         public const string BACKUP_DIR_PREFIX = "OneDrive_";
 
         /*
@@ -58,6 +60,11 @@ namespace ParanoidOneDriveBackup.App
         public static string TOKEN_CACHE_FILE_PATH
         {
             get => Path.Combine(CACHE_FOLDER_PATH, TOKEN_CACHE_FILE_NAME);
+        }
+
+        public static string EXPORT_IMPORT_TOKEN_CACHE_FILE_PATH
+        {
+            get => Path.Combine(CACHE_FOLDER_PATH, EXPORT_IMPORT_TOKEN_CACHE_FILE_NAME);
         }
     }
 }

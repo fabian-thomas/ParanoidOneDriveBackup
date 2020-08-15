@@ -121,53 +121,52 @@ namespace ParanoidOneDriveBackup
             {
                 // check ignore
                 if (AppData.Ignore.IsIgnored(childRelativePath, false))
-                {
                     _logger.LogDebug("Ignoring file: \"{0}\"", childRelativePath);
-                    return;
-                }
-
-                // download single file
-                try
+                else
                 {
-                    if (!_ct.IsCancellationRequested)
+                    // download single file
+                    try
                     {
-                        var fileStream = File.Create(Path.Combine(_rootPath, childRelativePath));
-
-                        var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content.Request()
-                                                                                              .GetAsync();
-
-                        try
-                        {
-                            var driveItem = await _graphClient.Me.Drive.Items[item.Id].Request()
-                                                                                      .GetAsync();
-                            if (driveItem.Size.HasValue)
-                                ReportProgress(driveItem.Size.Value);
-                            else
-                                _logger.LogWarning("File \"{0}\" has no size. Progress may be inaccurate.", childRelativePath);
-                        }
-                        catch (ServiceException ex)
-                        {
-                            _logger.LogWarning("Could not update progress of file \"{0}\".\n{1}", childRelativePath, ex);
-                        }
-
-
                         if (!_ct.IsCancellationRequested)
                         {
-                            _logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
+                            var fileStream = File.Create(Path.Combine(_rootPath, childRelativePath));
 
-                            contentStream.Seek(0, SeekOrigin.Begin);
-                            contentStream.CopyTo(fileStream);
-                            fileStream.Close();
+                            var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content.Request()
+                                                                                                  .GetAsync();
+
+                            if (!_ct.IsCancellationRequested)
+                            {
+                                _logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
+
+                                contentStream.Seek(0, SeekOrigin.Begin);
+                                contentStream.CopyTo(fileStream);
+                                fileStream.Close();
+                            }
                         }
                     }
+                    catch (ServiceException ex)
+                    {
+                        _logger.LogError("Could not download file \"{0}\".\n{1}", childRelativePath, ex);
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogError("Could not create file \"{0}\".\n{1}", childRelativePath, ex);
+                    }
+                }
+
+                // update progress
+                try
+                {
+                    var driveItem = await _graphClient.Me.Drive.Items[item.Id].Request()
+                                                                              .GetAsync();
+                    if (driveItem.Size.HasValue)
+                        ReportProgress(driveItem.Size.Value);
+                    else
+                        _logger.LogWarning("File \"{0}\" has no size. Progress may be inaccurate.", childRelativePath);
                 }
                 catch (ServiceException ex)
                 {
-                    _logger.LogError("Could not download file \"{0}\".\n{1}", childRelativePath, ex);
-                }
-                catch (IOException ex)
-                {
-                    _logger.LogError("Could not create file \"{0}\".\n{1}", childRelativePath, ex);
+                    _logger.LogWarning("Could not update progress of file \"{0}\".\n{1}", childRelativePath, ex);
                 }
             }
             else if (item.Package != null && item.Package.Type.Equals("oneNote"))

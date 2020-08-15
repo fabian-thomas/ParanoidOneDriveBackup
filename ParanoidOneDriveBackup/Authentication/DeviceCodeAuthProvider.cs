@@ -15,14 +15,14 @@ namespace ParanoidOneDriveBackup
         private string[] _scopes;
         private IAccount _userAccount;
         private ILogger<T> _logger;
-        private string _appId;
+        private string _clientId;
         private TokenCacheHelper<T> _tokenCacheHelper;
 
-        public DeviceCodeAuthProvider(string appId, string[] scopes, ILogger<T> logger, TokenCacheHelper<T> tokenCacheHelper)
+        public DeviceCodeAuthProvider(string clientId, string[] scopes, ILogger<T> logger, TokenCacheHelper<T> tokenCacheHelper)
         {
             _scopes = scopes;
             _logger = logger;
-            _appId = appId;
+            _clientId = clientId;
             _tokenCacheHelper = tokenCacheHelper;
         }
 
@@ -30,7 +30,7 @@ namespace ParanoidOneDriveBackup
         {
             try
             {
-                _authClient = PublicClientApplicationBuilder.Create(_appId)
+                _authClient = PublicClientApplicationBuilder.Create(_clientId)
                                                             .WithAuthority(AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount, true)
                                                             .Build();
 
@@ -64,7 +64,7 @@ namespace ParanoidOneDriveBackup
             catch (MsalClientException ex)
             {
                 if (ex.ErrorCode != null && ex.ErrorCode.Equals("client_id_must_be_guid"))
-                    _logger.LogCritical("You have to specify a valid API client id.");
+                    _logger.LogCritical("You have to specify a valid MS graph client id. Was \"{0}\"", _clientId);
                 else
                     _logger.LogCritical("Can't authenticate. Try deleting the cache file \"{1}\".\n{0}", ex, App.Constants.TOKEN_CACHE_FILE_PATH);
             }

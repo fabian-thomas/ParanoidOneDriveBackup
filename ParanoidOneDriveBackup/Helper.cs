@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
-using System.Text;
 
 namespace ParanoidOneDriveBackup
 {
@@ -15,7 +13,7 @@ namespace ParanoidOneDriveBackup
             return descriptions.Length == 0 ? null : descriptions[0].Description;
         }
 
-        public static Version? GetAppVersion() 
+        public static Version GetAppVersion() 
         {
             return Assembly.GetExecutingAssembly().GetName().Version;
         }

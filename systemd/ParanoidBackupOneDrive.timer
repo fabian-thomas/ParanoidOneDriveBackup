@@ -1,5 +1,5 @@
-﻿[Unit]
-Description=test timer
+[Unit]
+Description=ParanoidOneDriveBackup Timer
 
 [Timer]
 OnUnitActiveSec=60s

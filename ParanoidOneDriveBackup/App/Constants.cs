@@ -3,61 +3,48 @@ using System.IO;
 
 namespace ParanoidOneDriveBackup.App
 {
-    static class Constants
+    internal static class Constants
     {
-        public const string APP_TITLE = "ParanoidOneDriveBackup";
+        public const string AppTitle = "ParanoidOneDriveBackup";
 
-        public const string CONFIG_FILE_NAME = "config.json";
+        public const string ConfigFileName = "config.json";
 
-        public const string IGNORE_FILE_NAME = "ignore";
+        public const string IgnoreFileName = "ignore";
 
-        public const string TOKEN_CACHE_FILE_NAME = "token_cache.bin3";
+        private const string TokenCacheFileName = "token_cache.bin3";
 
-        public const string BACKUP_DIR_PREFIX = "OneDrive_";
-
-        /*
-         * Linux: home/<user>/.config/apptitle
-         * Windows: %localappdata%/apptitle
-         */
-        public static string APP_DATA_FOLDER_PATH
-        {
-            get
-            {
-                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-                    return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), APP_TITLE);
-                else
-                    return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), APP_TITLE);
-            }
-        }
-
-        public static string CONFIG_FILE_PATH
-        {
-            get => Path.Combine(APP_DATA_FOLDER_PATH, CONFIG_FILE_NAME);
-        }
-
-        public static string IGNORE_FILE_PATH
-        {
-            get => Path.Combine(APP_DATA_FOLDER_PATH, IGNORE_FILE_NAME);
-        }
+        public const string BackupDirPrefix = "OneDrive_";
 
         /*
-         * Linux: home/<user>/.cache/apptitle
-         * Windows: %localappdata%/apptitle
+         * Linux: home/<user>/.config/ParanoidOneDriveBackup
+         * Windows: %localappdata%/ParanoidOneDriveBackup
          */
-        public static string CACHE_FOLDER_PATH
+        public static string AppDataFolderPath =>
+            Path.Combine(
+                Environment.OSVersion.Platform == PlatformID.Win32NT
+                    ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                    : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppTitle);
+
+        public static string ConfigFilePath => Path.Combine(AppDataFolderPath, ConfigFileName);
+
+        public static string IgnoreFilePath => Path.Combine(AppDataFolderPath, IgnoreFileName);
+
+        /*
+         * Linux: home/<user>/.cache/ParanoidOneDriveBackup
+         * Windows: %localappdata%/ParanoidOneDriveBackup
+         */
+        private static string CacheFolderPath
         {
             get
             {
                 if (Environment.OSVersion.Platform == PlatformID.Unix)
-                    return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), ".cache", APP_TITLE);
+                    return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), ".cache",
+                        AppTitle);
                 else
-                    return APP_DATA_FOLDER_PATH;
+                    return AppDataFolderPath;
             }
         }
 
-        public static string TOKEN_CACHE_FILE_PATH
-        {
-            get => Path.Combine(CACHE_FOLDER_PATH, TOKEN_CACHE_FILE_NAME);
-        }
+        public static string TokenCacheFilePath => Path.Combine(CacheFolderPath, TokenCacheFileName);
     }
 }

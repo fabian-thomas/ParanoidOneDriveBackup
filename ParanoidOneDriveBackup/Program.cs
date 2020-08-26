@@ -24,41 +24,41 @@ namespace ParanoidOneDriveBackup
                 .UseSystemd()
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
-                    if (!File.Exists(Constants.CONFIG_FILE_PATH))
+                    if (!File.Exists(Constants.ConfigFilePath))
                     {
                         var embeddedProvider = new EmbeddedFileProvider(Assembly.GetExecutingAssembly());
-                        Directory.CreateDirectory(Constants.APP_DATA_FOLDER_PATH);
+                        Directory.CreateDirectory(Constants.AppDataFolderPath);
                         
                         // copy config file
-                        using (var reader = embeddedProvider.GetFileInfo(Constants.CONFIG_FILE_NAME).CreateReadStream())
+                        using (var reader = embeddedProvider.GetFileInfo(Constants.ConfigFileName).CreateReadStream())
                         {
-                            var fileStream = File.Create(Constants.CONFIG_FILE_PATH);
+                            var fileStream = File.Create(Constants.ConfigFilePath);
                             reader.Seek(0, SeekOrigin.Begin);
                             reader.CopyTo(fileStream);
                             fileStream.Close();
                         }
                         
-                        if (!File.Exists(Constants.IGNORE_FILE_PATH))
+                        if (!File.Exists(Constants.IgnoreFilePath))
                         {
                             // copy ignore file
-                            using var reader = embeddedProvider.GetFileInfo(Constants.IGNORE_FILE_NAME).CreateReadStream();
-                            var fileStream = File.Create(Constants.IGNORE_FILE_PATH);
+                            using var reader = embeddedProvider.GetFileInfo(Constants.IgnoreFileName).CreateReadStream();
+                            var fileStream = File.Create(Constants.IgnoreFilePath);
                             reader.Seek(0, SeekOrigin.Begin);
                             reader.CopyTo(fileStream);
                             fileStream.Close();
                         }
 
-                        Console.WriteLine($"No config file found. The default config file has been copied to \"{Constants.CONFIG_FILE_PATH}\". Modify it and restart the application.");
+                        Console.WriteLine($"No config file found. The default config file has been copied to \"{Constants.ConfigFilePath}\". Modify it and restart the application.");
                         Console.WriteLine();
                         Console.WriteLine("Press any key to exit...");
                         Console.ReadKey();
                         Environment.Exit(1);
                     }
-                    config.AddJsonFile(Constants.CONFIG_FILE_PATH);
+                    config.AddJsonFile(Constants.ConfigFilePath);
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    AppData.Protector = DataProtectionProvider.Create(Constants.APP_TITLE).CreateProtector(Constants.APP_TITLE);// TODO move to startup and change implementation
+                    AppData.Protector = DataProtectionProvider.Create(Constants.AppTitle).CreateProtector(Constants.AppTitle);// TODO move to startup and change implementation
                     //AppData.Protector = services.AddDataProtection().Services
                     //                            .BuildServiceProvider()
                     //                            .GetDataProtectionProvider()

@@ -1,30 +1,29 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Graph;
-using ParanoidOneDriveBackup.App;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Graph;
+using ParanoidOneDriveBackup.App;
 using Directory = System.IO.Directory;
 using File = System.IO.File;
 
-namespace ParanoidOneDriveBackup
+namespace ParanoidOneDriveBackup.Graph
 {
     public class GraphHelper<T>
     {
-        private GraphServiceClient _graphClient;
-        private ILogger<T> _logger;
-        private List<Task> downloadTasks;
-        private CancellationToken _ct;
-        private string _rootPath;
-        private int _maxParallelDownloadTasks;
-        private decimal _reportingSteps;
-        private bool _reportingEnabled;
+        private readonly GraphServiceClient _graphClient;
+        private readonly ILogger<T> _logger;
+        private List<Task> _downloadTasks;
+        private readonly CancellationToken _ct;
+        private readonly string _rootPath;
+        private readonly int _maxParallelDownloadTasks;
+        private readonly decimal _reportingSteps;
+        private readonly bool _reportingEnabled;
 
-        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct, string rootPath, int maxParallelDownloadTasks, decimal reportingSteps, bool reportingEnabled)
+        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct,
+            string rootPath, int maxParallelDownloadTasks, decimal reportingSteps, bool reportingEnabled)
         {
             _graphClient = new GraphServiceClient(authProvider);
             _logger = logger;
@@ -59,7 +58,7 @@ namespace ParanoidOneDriveBackup
                 {
                     if (!_ct.IsCancellationRequested)
                     {
-                        var children = await _graphClient.Me.Drive.Items[item.Id].Children.Request().GetAsync();
+                        var children = await _graphClient.Me.Drive.Items[item.Id].Children.Request().GetAsync(_ct);
 
                         if (item.Root != null)
                         {
@@ -71,7 +70,9 @@ namespace ParanoidOneDriveBackup
                             }
                             catch (IOException ex)
                             {
-                                _logger.LogError("Could not create directory \"{0}\". No items have been downloaded.\n{1}", _rootPath, ex);
+                                _logger.LogError(
+                                    "Could not create directory \"{0}\". No items have been downloaded.\n{1}",
+                                    _rootPath, ex);
                             }
                         }
                         else
@@ -83,7 +84,9 @@ namespace ParanoidOneDriveBackup
                             }
                             catch (IOException ex)
                             {
-                                _logger.LogError("Could not create directory \"{0}\". No children have been downloaded.\n{1}", childRelativePath, ex);
+                                _logger.LogError(
+                                    "Could not create directory \"{0}\". No children have been downloaded.\n{1}",
+                                    childRelativePath, ex);
                             }
                         }
 
@@ -98,16 +101,18 @@ namespace ParanoidOneDriveBackup
                                 {
                                     if (_maxParallelDownloadTasks != 0)
                                     {
-                                        downloadTasks.RemoveAll(x => x.IsCompleted);
-                                        if (downloadTasks.Count >= _maxParallelDownloadTasks)
+                                        _downloadTasks.RemoveAll(x => x.IsCompleted);
+                                        if (_downloadTasks.Count >= _maxParallelDownloadTasks)
                                         {
-                                            _logger.LogDebug("Maximum number of download tasks reached. Awating any task to finish.");
-                                            var index = Task.WaitAny(downloadTasks.ToArray(), _ct);
-                                            if (index >= 0 && index < downloadTasks.Count)
-                                                downloadTasks.RemoveAt(index);
+                                            _logger.LogDebug(
+                                                "Maximum number of download tasks reached. Awaiting any task to finish.");
+                                            var index = Task.WaitAny(_downloadTasks.ToArray(), _ct);
+                                            if (index >= 0 && index < _downloadTasks.Count)
+                                                _downloadTasks.RemoveAt(index);
                                         }
                                     }
-                                    downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
+
+                                    _downloadTasks.Add(DownloadAllRecursive(child, childRelativePath));
                                 }
                             }
                     }
@@ -132,14 +137,14 @@ namespace ParanoidOneDriveBackup
                             var fileStream = File.Create(Path.Combine(_rootPath, childRelativePath));
 
                             var contentStream = await _graphClient.Me.Drive.Items[item.Id].Content.Request()
-                                                                                                  .GetAsync();
+                                .GetAsync();
 
                             if (!_ct.IsCancellationRequested)
                             {
                                 _logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
 
                                 contentStream.Seek(0, SeekOrigin.Begin);
-                                contentStream.CopyTo(fileStream);
+                                await contentStream.CopyToAsync(fileStream, _ct);
                                 fileStream.Close();
                             }
                         }
@@ -158,7 +163,7 @@ namespace ParanoidOneDriveBackup
                 try
                 {
                     var driveItem = await _graphClient.Me.Drive.Items[item.Id].Request()
-                                                                              .GetAsync();
+                        .GetAsync(_ct);
                     if (driveItem.Size.HasValue)
                         ReportProgress(driveItem.Size.Value);
                     else
@@ -171,64 +176,83 @@ namespace ParanoidOneDriveBackup
             }
             else if (item.Package != null && item.Package.Type.Equals("oneNote"))
             {
+                _logger.LogDebug(
+                    AppData.Ignore.IsIgnored(childRelativePath, false)
+                        ? "Ignored notebook: \"{0}\""
+                        : "Notebook download currently not available. Skipping \"{0}\"", childRelativePath);
+
+                // update progress
+                if (!_ct.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var driveItem = await _graphClient.Me.Drive.Items[item.Id].Request()
+                            .GetAsync(_ct);
+                        if (driveItem.Size.HasValue)
+                            ReportProgress(driveItem.Size.Value);
+                        else
+                            _logger.LogWarning("Notebook \"{0}\" has no size. Progress may be inaccurate.",
+                                childRelativePath);
+                    }
+                    catch (ServiceException ex)
+                    {
+                        _logger.LogWarning("Could not update progress of notebook \"{0}\".\n{1}", childRelativePath,
+                            ex);
+                    }
+                }
+
                 // check ignore
                 //if (AppData.Ignore.IsIgnored(childRelativePath, false))
                 //{
                 //    _logger.LogDebug("Ignored file: \"{0}\"", childRelativePath);
                 //    return;
                 //}
-                var x = (await _graphClient.Me.Drive.Items[item.Id]
-                                       .Request()
-                                       .GetAsync());
-                if (x.Size.HasValue)
-                {
-                    ReportProgress(x.Size.Value);
-                }
-                else
-                    _logger.LogCritical("dfhjash");
-
-
-
-                _logger.LogWarning("Onenote file \"{0}\"", childRelativePath);
-                return;
+                // var x = (await _graphClient.Me.Drive.Items[item.Id].Request().GetAsync(_ct));
+                // if (x.Size.HasValue)
+                // {
+                //     ReportProgress(x.Size.Value);
+                // }
+                // else
+                //     _logger.LogCritical("d");
+                //
+                //
+                // _logger.LogWarning("Onenote file \"{0}\"", childRelativePath);
+                // return;
                 // onenote notebook
+                
 
-                // TODO
-                //throw new Exception();
-
-
-                var ite = _graphClient.Me.Drive.Items[item.Id];
-                var c = ite.Content;
-                var r = c.Request();
+                // var ite = _graphClient.Me.Drive.Items[item.Id];
+                // var c = ite.Content;
+                // var r = c.Request();
                 //graphClient.Me.Onenote.
                 //var stream3 = await r
                 //                .GetAsync();
 
 
-                try
-                {
-                    var filePath = parentDirectoryRelativePath + @"/TestPage.one";
+                // try
+                // {
+                //     var filePath = parentDirectoryRelativePath + @"/TestPage.one";
                     //var filePath = parentDirectoryPath + @"/" + item.Name;
-                    var fileStream = File.Create(filePath);
+                    // var fileStream = File.Create(filePath);
 
                     //var stream = await graphClient.Me.Drive.Items[item.Id].Content
                     //                .Request()
                     //                .GetAsync();
 
 
-
-                    var notebooks = await _graphClient.Me.Onenote.Notebooks.Request().GetAsync();
-                    var note = notebooks.First();
-                    Microsoft.Graph.Notebook notebook = await _graphClient.Me.Onenote.Notebooks[note.Id].Request().GetAsync();
-
-                    var pags = await _graphClient.Me.Onenote.Pages.Request().Filter("title eq 'TestPage'").GetAsync();
-
-                    var stream = await _graphClient.Me.Onenote.Pages[pags.First().Id].Content.Request().GetAsync();
-
-
-                    stream.Seek(0, SeekOrigin.Begin);
-                    stream.CopyTo(fileStream);
-                    fileStream.Close();
+                    // var notebooks = await _graphClient.Me.Onenote.Notebooks.Request().GetAsync();
+                    // var note = notebooks.First();
+                    // Microsoft.Graph.Notebook notebook =
+                    //     await _graphClient.Me.Onenote.Notebooks[note.Id].Request().GetAsync();
+                    //
+                    // var pages = await _graphClient.Me.Onenote.Pages.Request().Filter("title eq 'TestPage'").GetAsync();
+                    //
+                    // var stream = await _graphClient.Me.Onenote.Pages[pages.First().Id].Content.Request().GetAsync();
+                    //
+                    //
+                    // stream.Seek(0, SeekOrigin.Begin);
+                    // stream.CopyTo(fileStream);
+                    // fileStream.Close();
 
                     //var result = await graphClient.Me.Onenote.Pages.Request().GetAsync();
                     //foreach (var page in result)
@@ -243,37 +267,34 @@ namespace ParanoidOneDriveBackup
                     //}
 
 
-                    var res = await _graphClient.Me.Onenote.Resources.Request().GetAsync();
-
-                    stream = await _graphClient.Me.Onenote.Resources[pags.First().Id].Content
-                                    .Request()
-                                                                                        .GetAsync();
-
-
-                    filePath = parentDirectoryRelativePath + @"/TestPage2.one";
-                    fileStream = File.Create(filePath);
-                    stream.Seek(0, SeekOrigin.Begin);
-                    stream.CopyTo(fileStream);
-                    fileStream.Close();
+                    // var res = await _graphClient.Me.Onenote.Resources.Request().GetAsync();
+                    //
+                    // stream = await _graphClient.Me.Onenote.Resources[pages.First().Id].Content
+                    //     .Request()
+                    //     .GetAsync();
+                    //
+                    //
+                    // filePath = parentDirectoryRelativePath + @"/TestPage2.one";
+                    // fileStream = File.Create(filePath);
+                    // stream.Seek(0, SeekOrigin.Begin);
+                    // stream.CopyTo(fileStream);
+                    // fileStream.Close();
 
                     //var stream = await graphClient.Me.Drive.Items[id].Content.Request().GetAsync();
 
                     //var fileStream = File.Create(Directory.GetCurrentDirectory() + "/" + file);
-
-                }
-                catch (ServiceException ex)
-                {
-
-                }
-
+                // }
+                // catch (ServiceException ex)
+                // {
+                // }
             }
             else
             {
                 if (item.Package == null)
                     _logger.LogError("File \"{0}\" is not supported.", childRelativePath);
                 else
-                    _logger.LogError("File \"{1}\" of type {0} is not supported.", item.Package.Type, childRelativePath);
-
+                    _logger.LogError("File \"{1}\" of type {0} is not supported.", item.Package.Type,
+                        childRelativePath);
             }
         }
 
@@ -287,9 +308,9 @@ namespace ParanoidOneDriveBackup
             {
                 _logger.LogInformation("Backing up OneDrive to \"{0}\"", _rootPath);
 
-                downloadTasks = new List<Task>();
+                _downloadTasks = new List<Task>();
 
-                var root = _graphClient.Me.Drive.Root.Request().GetAsync().Result;
+                var root = _graphClient.Me.Drive.Root.Request().GetAsync(_ct).Result;
 
                 if (root.Size.HasValue && _reportingEnabled)
                 {
@@ -306,7 +327,7 @@ namespace ParanoidOneDriveBackup
                 await DownloadAllRecursive(root, "");
 
                 _logger.LogDebug("Awaiting downloads to finish...");
-                Task.WaitAll(downloadTasks.ToArray(), _ct);
+                Task.WaitAll(_downloadTasks.ToArray(), _ct);
 
                 _logger.LogInformation("Backup finished.");
             }
@@ -329,6 +350,5 @@ namespace ParanoidOneDriveBackup
                 }
             }
         }
-
     }
 }

@@ -1,6 +1,7 @@
-﻿[Unit]
-Description=test job service
+[Unit]
+Description=ParanoidOneDriveBackup Servoce
 
 [Service]
-Type=oneshot
-ExecStart=/home/fabian/Shared/WorkerTest
+Type=notify
+ExecStart=</path/to/the/executable>
+User=<user>

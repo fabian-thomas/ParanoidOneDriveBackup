@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ParanoidOneDriveBackup.App.Configuration;
 
 namespace ParanoidOneDriveBackup.App
@@ -13,6 +14,7 @@ namespace ParanoidOneDriveBackup.App
         public static IHostApplicationLifetime Lifetime;
         public static IDataProtector Protector;
         public static IgnoreList Ignore;
+        public static ILogger<BackupService> Logger;
 
         public static void BindConfig(IConfiguration config)
         {

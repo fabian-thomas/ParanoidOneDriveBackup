@@ -11,10 +11,9 @@ using File = System.IO.File;
 
 namespace ParanoidOneDriveBackup.Graph
 {
-    public class GraphHelper<T>
+    public class GraphHelper
     {
         private readonly GraphServiceClient _graphClient;
-        private readonly ILogger<T> _logger;
         private List<Task> _downloadTasks;
         private readonly CancellationToken _ct;
         private readonly string _rootPath;
@@ -22,11 +21,10 @@ namespace ParanoidOneDriveBackup.Graph
         private readonly decimal _reportingSteps;
         private readonly bool _reportingEnabled;
 
-        public GraphHelper(ILogger<T> logger, IAuthenticationProvider authProvider, CancellationToken ct,
+        public GraphHelper(IAuthenticationProvider authProvider, CancellationToken ct,
             string rootPath, int maxParallelDownloadTasks, decimal reportingSteps, bool reportingEnabled)
         {
             _graphClient = new GraphServiceClient(authProvider);
-            _logger = logger;
             _ct = ct;
             _rootPath = rootPath;
             _maxParallelDownloadTasks = maxParallelDownloadTasks;
@@ -43,7 +41,7 @@ namespace ParanoidOneDriveBackup.Graph
                 // check ignore
                 if (AppData.Ignore.IsIgnored(childRelativePath, true))
                 {
-                    _logger.LogDebug("Ignoring folder: \"{0}\"", childRelativePath);
+                    AppData.Logger.LogDebug("Ignoring folder: \"{0}\"", childRelativePath);
                     return;
                 }
 
@@ -66,11 +64,11 @@ namespace ParanoidOneDriveBackup.Graph
                             try
                             {
                                 Directory.CreateDirectory(_rootPath);
-                                _logger.LogDebug("Created Directory: \"{0}\"", _rootPath);
+                                AppData.Logger.LogDebug("Created Directory: \"{0}\"", _rootPath);
                             }
                             catch (IOException ex)
                             {
-                                _logger.LogError(
+                                AppData.Logger.LogError(
                                     "Could not create directory \"{0}\". No items have been downloaded.\n{1}",
                                     _rootPath, ex);
                             }
@@ -80,11 +78,11 @@ namespace ParanoidOneDriveBackup.Graph
                             try
                             {
                                 Directory.CreateDirectory(Path.Combine(_rootPath, childRelativePath));
-                                _logger.LogDebug("Created Directory: \"{0}\"", childRelativePath);
+                                AppData.Logger.LogDebug("Created Directory: \"{0}\"", childRelativePath);
                             }
                             catch (IOException ex)
                             {
-                                _logger.LogError(
+                                AppData.Logger.LogError(
                                     "Could not create directory \"{0}\". No children have been downloaded.\n{1}",
                                     childRelativePath, ex);
                             }
@@ -104,7 +102,7 @@ namespace ParanoidOneDriveBackup.Graph
                                         _downloadTasks.RemoveAll(x => x.IsCompleted);
                                         if (_downloadTasks.Count >= _maxParallelDownloadTasks)
                                         {
-                                            _logger.LogDebug(
+                                            AppData.Logger.LogDebug(
                                                 "Maximum number of download tasks reached. Awaiting any task to finish.");
                                             var index = Task.WaitAny(_downloadTasks.ToArray(), _ct);
                                             if (index >= 0 && index < _downloadTasks.Count)
@@ -119,14 +117,14 @@ namespace ParanoidOneDriveBackup.Graph
                 }
                 catch (ServiceException ex)
                 {
-                    _logger.LogError("Could not get children of directory \"{0}\".\n{1}", childRelativePath, ex);
+                    AppData.Logger.LogError("Could not get children of directory \"{0}\".\n{1}", childRelativePath, ex);
                 }
             }
             else if (item.File != null)
             {
                 // check ignore
                 if (AppData.Ignore.IsIgnored(childRelativePath, false))
-                    _logger.LogDebug("Ignoring file: \"{0}\"", childRelativePath);
+                    AppData.Logger.LogDebug("Ignoring file: \"{0}\"", childRelativePath);
                 else
                 {
                     // download single file
@@ -141,7 +139,7 @@ namespace ParanoidOneDriveBackup.Graph
 
                             if (!_ct.IsCancellationRequested)
                             {
-                                _logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
+                                AppData.Logger.LogDebug("Downloading file: \"{0}\"", childRelativePath);
 
                                 contentStream.Seek(0, SeekOrigin.Begin);
                                 await contentStream.CopyToAsync(fileStream, _ct);
@@ -151,11 +149,11 @@ namespace ParanoidOneDriveBackup.Graph
                     }
                     catch (ServiceException ex)
                     {
-                        _logger.LogError("Could not download file \"{0}\".\n{1}", childRelativePath, ex);
+                        AppData.Logger.LogError("Could not download file \"{0}\".\n{1}", childRelativePath, ex);
                     }
                     catch (IOException ex)
                     {
-                        _logger.LogError("Could not create file \"{0}\".\n{1}", childRelativePath, ex);
+                        AppData.Logger.LogError("Could not create file \"{0}\".\n{1}", childRelativePath, ex);
                     }
                 }
 
@@ -167,16 +165,16 @@ namespace ParanoidOneDriveBackup.Graph
                     if (driveItem.Size.HasValue)
                         ReportProgress(driveItem.Size.Value);
                     else
-                        _logger.LogWarning("File \"{0}\" has no size. Progress may be inaccurate.", childRelativePath);
+                        AppData.Logger.LogWarning("File \"{0}\" has no size. Progress may be inaccurate.", childRelativePath);
                 }
                 catch (ServiceException ex)
                 {
-                    _logger.LogWarning("Could not update progress of file \"{0}\".\n{1}", childRelativePath, ex);
+                    AppData.Logger.LogWarning("Could not update progress of file \"{0}\".\n{1}", childRelativePath, ex);
                 }
             }
             else if (item.Package != null && item.Package.Type.Equals("oneNote"))
             {
-                _logger.LogDebug(
+                AppData.Logger.LogDebug(
                     AppData.Ignore.IsIgnored(childRelativePath, false)
                         ? "Ignored notebook: \"{0}\""
                         : "Notebook download currently not available. Skipping \"{0}\"", childRelativePath);
@@ -191,12 +189,12 @@ namespace ParanoidOneDriveBackup.Graph
                         if (driveItem.Size.HasValue)
                             ReportProgress(driveItem.Size.Value);
                         else
-                            _logger.LogWarning("Notebook \"{0}\" has no size. Progress may be inaccurate.",
+                            AppData.Logger.LogWarning("Notebook \"{0}\" has no size. Progress may be inaccurate.",
                                 childRelativePath);
                     }
                     catch (ServiceException ex)
                     {
-                        _logger.LogWarning("Could not update progress of notebook \"{0}\".\n{1}", childRelativePath,
+                        AppData.Logger.LogWarning("Could not update progress of notebook \"{0}\".\n{1}", childRelativePath,
                             ex);
                     }
                 }
@@ -291,9 +289,9 @@ namespace ParanoidOneDriveBackup.Graph
             else
             {
                 if (item.Package == null)
-                    _logger.LogError("File \"{0}\" is not supported.", childRelativePath);
+                    AppData.Logger.LogError("File \"{0}\" is not supported.", childRelativePath);
                 else
-                    _logger.LogError("File \"{1}\" of type {0} is not supported.", item.Package.Type,
+                    AppData.Logger.LogError("File \"{1}\" of type {0} is not supported.", item.Package.Type,
                         childRelativePath);
             }
         }
@@ -306,7 +304,7 @@ namespace ParanoidOneDriveBackup.Graph
         {
             try
             {
-                _logger.LogInformation("Backing up OneDrive to \"{0}\"", _rootPath);
+                AppData.Logger.LogInformation("Backing up OneDrive to \"{0}\"", _rootPath);
 
                 _downloadTasks = new List<Task>();
 
@@ -320,20 +318,20 @@ namespace ParanoidOneDriveBackup.Graph
                 else
                 {
                     if (_reportingEnabled)
-                        _logger.LogWarning("Could not get size of root folder. Progress is not printed.");
+                        AppData.Logger.LogWarning("Could not get size of root folder. Progress is not printed.");
                     _total = 0;
                 }
 
                 await DownloadAllRecursive(root, "");
 
-                _logger.LogDebug("Awaiting downloads to finish...");
+                AppData.Logger.LogDebug("Awaiting downloads to finish...");
                 Task.WaitAll(_downloadTasks.ToArray(), _ct);
 
-                _logger.LogInformation("Backup finished.");
+                AppData.Logger.LogInformation("Backup finished.");
             }
             catch (ServiceException ex)
             {
-                _logger.LogCritical("Could not get root item of OneDrive. Nothing could be downloaded.\n{0}", ex);
+                AppData.Logger.LogCritical("Could not get root item of OneDrive. Nothing could be downloaded.\n{0}", ex);
             }
         }
 
@@ -346,7 +344,7 @@ namespace ParanoidOneDriveBackup.Graph
                 if (div.CompareTo(_lastReported + _reportingSteps) != -1)
                 {
                     _lastReported = _reportingSteps * Math.Floor(div / _reportingSteps);
-                    _logger.LogInformation($"{_lastReported * 100}% - {_downloaded / 1000000}/{_total / 1000000}Mb");
+                    AppData.Logger.LogInformation($"{_lastReported * 100}% - {_downloaded / 1000000}/{_total / 1000000}Mb");
                 }
             }
         }

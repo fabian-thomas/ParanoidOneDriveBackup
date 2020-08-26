@@ -17,11 +17,10 @@ namespace ParanoidOneDriveBackup
 {
     public class BackupService : BackgroundService
     {
-        private readonly ILogger<BackupService> _logger;
 
         public BackupService(IHostApplicationLifetime hostApplicationLifetime, ILogger<BackupService> logger, IConfiguration config)
         {
-            _logger = logger;
+            AppData.Logger = logger;
             AppData.Lifetime = hostApplicationLifetime;
 
             AppData.BindConfig(config);
@@ -31,14 +30,14 @@ namespace ParanoidOneDriveBackup
         {
             try
             {
-                _logger.LogDebug("authing");
+                AppData.Logger.LogDebug("authing");
 
                 // Authentication
-                var tokenCacheHelper = new TokenCacheHelper<BackupService>(_logger, Constants.TokenCacheFilePath);
-                var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, _logger, tokenCacheHelper);
+                var tokenCacheHelper = new TokenCacheHelper<BackupService>(Constants.TokenCacheFilePath);
+                var authProvider = new DeviceCodeAuthProvider<BackupService>(AppData.MsGraphConfig.ClientId, AppData.MsGraphConfig.Scopes, tokenCacheHelper);
                 var authenticated = await authProvider.InitializeAuthentication();
 
-                _logger.LogDebug("after authing");
+                AppData.Logger.LogDebug("after authing");
 
                 // Backup
                 if (!ct.IsCancellationRequested && authenticated)
@@ -50,25 +49,24 @@ namespace ParanoidOneDriveBackup
                         if (!ct.IsCancellationRequested)
                         {
                             // directly info class is used to normalize slashes in path
-                            var graphHelper = new GraphHelper<BackupService>(_logger, authProvider, ct, new DirectoryInfo(Path.Combine(AppData.BackupConfig.Path, GetBackupDirectoryName())).FullName, AppData.BackupConfig.MaxParallelDownloadTasks,
+                            var graphHelper = new GraphHelper(authProvider, ct, new DirectoryInfo(Path.Combine(AppData.BackupConfig.Path, GetBackupDirectoryName())).FullName, AppData.BackupConfig.MaxParallelDownloadTasks,
                                 AppData.BackupConfig.ProgressReporting.ProgressReportingSteps, AppData.BackupConfig.ProgressReporting.Enabled);
                             await graphHelper.DownloadAll();
                         }
                     }
                     catch (IOException ex)
                     {
-                        _logger.LogCritical("Could not access or create backup folder \"{0}\"\n", AppData.BackupConfig.Path, ex);
+                        AppData.Logger.LogCritical("Could not access or create backup folder \"{0}\"\n", AppData.BackupConfig.Path, ex);
                     }
                 }
-
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Unhandled exception in backup service:\n{0}", ex);
+                AppData.Logger.LogCritical("Unhandled exception in backup service:\n{0}", ex);
+                Environment.Exit(1); // TODO global exit of application -> restart if exit code is 1
             }
 
-            _logger.LogDebug("shutting down");
-            AppData.Lifetime.StopApplication();
+            AppData.Logger.LogDebug("shutting down");
         }
 
         private void DeleteOldestFolders(string path, int max, CancellationToken ct)
@@ -84,7 +82,7 @@ namespace ParanoidOneDriveBackup
                 }
                 catch (Exception)
                 {
-                    _logger.LogWarning("Could not parse suffix of directory {0} to date. Ignoring this directory.", dir);
+                    AppData.Logger.LogWarning("Could not parse suffix of directory {0} to date. Ignoring this directory.", dir);
                 }
             }
 
@@ -98,12 +96,12 @@ namespace ParanoidOneDriveBackup
                 {
                     dirDict.Remove(key);
                     Directory.Delete(Path.Combine(path, key), true);
-                    _logger.LogInformation("Removed backup \"{0}\"", key);
+                    AppData.Logger.LogInformation("Removed backup \"{0}\"", key);
                     removed++;
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogError("Could not delete directory \"{0}\".\n{1}", key, ex);
+                    AppData.Logger.LogError("Could not delete directory \"{0}\".\n{1}", key, ex);
                 }
             }
         }
@@ -120,14 +118,6 @@ namespace ParanoidOneDriveBackup
         {
             var s = DateTime.Now.ToString("u", CultureInfo.CreateSpecificCulture("en-US")).Replace(':', '-').Replace(' ', '_');
             return Constants.BackupDirPrefix + s.Remove(s.Length - 1);
-        }
-
-        public override async Task StartAsync(CancellationToken cancellationToken)
-        {
-            // read ignore file
-            AppData.Ignore = File.Exists(Constants.IgnoreFilePath) ? new IgnoreList(Constants.IgnoreFilePath) : new IgnoreList();
-
-            await ExecuteAsync(cancellationToken);
         }
     }
 }

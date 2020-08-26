@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
+using ParanoidOneDriveBackup.App;
 
 namespace ParanoidOneDriveBackup.Authentication
 {
@@ -14,14 +15,12 @@ namespace ParanoidOneDriveBackup.Authentication
         private IPublicClientApplication _authClient;
         private readonly string[] _scopes;
         private IAccount _userAccount;
-        private readonly ILogger<T> _logger;
         private readonly string _clientId;
         private readonly TokenCacheHelper<T> _tokenCacheHelper;
 
-        public DeviceCodeAuthProvider(string clientId, string[] scopes, ILogger<T> logger, TokenCacheHelper<T> tokenCacheHelper)
+        public DeviceCodeAuthProvider(string clientId, string[] scopes, TokenCacheHelper<T> tokenCacheHelper)
         {
             _scopes = scopes;
-            _logger = logger;
             _clientId = clientId;
             _tokenCacheHelper = tokenCacheHelper;
         }
@@ -55,7 +54,7 @@ namespace ParanoidOneDriveBackup.Authentication
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogCritical("Error during authentication.\n{0}", ex);
+                        AppData.Logger.LogCritical("Error during authentication.\n{0}", ex);
                         return false;
                     }
                 }
@@ -64,9 +63,9 @@ namespace ParanoidOneDriveBackup.Authentication
             catch (MsalClientException ex)
             {
                 if (ex.ErrorCode != null && ex.ErrorCode.Equals("client_id_must_be_guid"))
-                    _logger.LogCritical("You have to specify a valid MS graph client id. Was \"{0}\"", _clientId);
+                    AppData.Logger.LogCritical("You have to specify a valid MS graph client id. Was \"{0}\"", _clientId);
                 else
-                    _logger.LogCritical("Can't authenticate. Try deleting the cache file \"{1}\".\n{0}", ex, App.Constants.TokenCacheFilePath);
+                    AppData.Logger.LogCritical("Can't authenticate. Try deleting the cache file \"{1}\".\n{0}", ex, App.Constants.TokenCacheFilePath);
             }
             return false;
         }

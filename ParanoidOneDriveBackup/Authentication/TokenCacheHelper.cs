@@ -1,23 +1,18 @@
+using System.IO;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using ParanoidOneDriveBackup.App;
-using System;
-using System.IO;
-using System.Reflection;
-using System.Security.Cryptography;
 
-namespace ParanoidOneDriveBackup
+namespace ParanoidOneDriveBackup.Authentication
 {
     public class TokenCacheHelper<T> // taken from https://docs.microsoft.com/de-de/azure/active-directory/develop/msal-net-token-cache-serialization
     {
-
-        private readonly ILogger<T> _logger;
         private readonly string _cacheFilePath;
         private readonly object _fileLock = new object();
 
-        public TokenCacheHelper(ILogger<T> logger, string cacheFilePath)
+        public TokenCacheHelper(string cacheFilePath)
         {
-            _logger = logger;
             _cacheFilePath = cacheFilePath;
         }
 
@@ -39,7 +34,7 @@ namespace ParanoidOneDriveBackup
                 }
                 catch (CryptographicException)
                 {
-                    _logger.LogWarning("MSAL token cache is invalid. Removing cache file. You need to reauthenticate.");
+                    AppData.Logger.LogWarning("MSAL token cache is invalid. Removing cache file. You need to reauthenticate.");
                 }
             }
         }

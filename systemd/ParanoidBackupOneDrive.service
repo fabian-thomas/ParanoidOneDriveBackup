@@ -5,3 +5,4 @@ Description=ParanoidOneDriveBackup Servoce
 Type=notify
 ExecStart=</path/to/the/executable>
 User=<user>
+Restart=on-failure

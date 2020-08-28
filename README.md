@@ -1,13 +1,18 @@
 # ParanoidOneDriveBackup
 Backup your OneDrive cloud files to any (Linux) Server
 
+## Missing Features
+
+- OneNote notebook backup: Microsoft has yet not implemented an option in the MS Graph API to download the .one files of your OneNote notebooks. Until they implement this feature it will not be available in this application either.
+- windows service support (but in theory the application should run on Windows too, if you compile it for that) 
+
 ## Motivation
 
 It happened two times to me that I deleted my whole OneDrive cloud files by making a mistake while using some OneDrive client on Linux. Altough you can recover your cloud files from the trash in OneDrive it's very annoying to do that file by file and if you recover all files you have a lot of old trash files in your OneDrive that you deleted before. Another problem is that deleted OneNote notebooks don't go to the trash if you delete them by using a third party sync client. This application tries to prevent such issues by giving the possibility to backup your cloud files (including your notebooks) any time you want to any Linux or Windows PC/Server. 
 
 ## Prerequisites
 
-- Linux or Windows 10 (64 bit)
+- Linux ~~or Windows 10~~ (64 bit)
 - [.NET Core](https://dotnet.microsoft.com/download) x64 runtime
 
 ## Setup
@@ -20,7 +25,7 @@ Download the latest release files and extract them to `~/ParanoidOneDriveBackup`
 
 Run the app for the first time: `~/ParanoidOneDriveBackup/ParanoidOneDriveBackup`
 
-The app copies the default config file to your application data folder. Edit it to your needs: `nano ~/.config/ParanoidOneDriveBackup/.config.json`. You can find more information to the MS graph client id at the [MS graph section](https://github.com/Thomi7/ParanoidOneDriveBackup#ms-graph) of this readme.
+The app copies the default config file to your application data folder. Edit it to your needs: `nano ~/.config/ParanoidOneDriveBackup/config.json`. You can find more information to the MS graph client id at the [MS graph section](https://github.com/Thomi7/ParanoidOneDriveBackup#ms-graph) of this readme.
 
 Now run the app another time. If your config file is valid the app prints instructions on how to authorize in the console. Once you have authorized the app to read your OneDrive files it should start the first backup directly. (You can cancel it if you want)
 
@@ -34,7 +39,7 @@ Enable the timer service with `systemctl enable ParanoidOneDriveBackup.timer`. S
 
 ### Windows
 
-currently not supported as a service (coming soon)
+currently not supported as a service
 
 ## Configuration
 
@@ -44,12 +49,11 @@ The application uses the Microsoft Graph API to backup your files.
 
 #### Permissions
 
-The app uses 3 permissions:
+The app uses 2 permissions:
 
 | Permission     | Description                            |
 | -------------- | -------------------------------------- |
 | Files.Read     | needed to download your OneDrive files |
-| Notes.Read     | needed to download your notebooks      |
 | offline_access | needed to stay logged in               |
 
 #### Client Id

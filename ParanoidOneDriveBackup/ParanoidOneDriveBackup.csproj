@@ -8,37 +8,26 @@
     <Copyright>Copyright (c) 2020 Fabian Thomas</Copyright>
     <PackageProjectUrl>https://github.com/Thomi7/ParanoidOneDriveBackup</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Thomi7/ParanoidOneDriveBackup</RepositoryUrl>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <Authors>Fabian Thomas</Authors>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup> 
     <PackageReference Include="MAB.DotIgnore" Version="3.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="3.1.7" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="3.1.7" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="3.1.7" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="3.1.7" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="3.1.7" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.7" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="3.1.7" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="3.1.7" />
-    <PackageReference Include="Microsoft.Graph" Version="3.10.0" />
+    <PackageReference Include="Microsoft.Graph" Version="3.12.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.17.1" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
-  </ItemGroup>
-
+  
   <ItemGroup>
     <None Remove="Resources\ignore" />
     <EmbeddedResource Include="Resources\ignore">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </EmbeddedResource>
   </ItemGroup>
 

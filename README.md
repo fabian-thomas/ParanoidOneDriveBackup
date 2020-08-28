@@ -26,11 +26,11 @@ Now run the app another time. If your config file is valid the app prints instru
 
 ##### Registering the app to systemd:
 
-Copy the two systemd files (.service, .timer) to `/etc/system/` and modify them to your needs. The default files specify that the app should do a backup every day at 4 pm.
+Copy the two systemd files (.service, .timer) to `/etc/systemd/system` and modify them to your needs. The default files specify that the app should do a backup every day at 4 pm.
 
-Start the service with `systemctl start ParanoidOneDriveBackup.timer` and check that there are no errors in the log with `journalctl -u ParanoidOneDriveBackup`. 
+Start the service with `systemctl start ParanoidOneDriveBackup.service` and check that there are no errors in the log with `journalctl -u ParanoidOneDriveBackup`. Optionally: Stop the service with `systemctl stop ParanoidOneDriveBackup.service` 
 
-If you want your service to start on startup of your system you can call `systemctl enable ParanoidOneDriveBackup.timer`.
+Enable the timer service with `systemctl enable ParanoidOneDriveBackup.timer`. Systemd automatically starts the timer again on system startup.
 
 ### Windows
 

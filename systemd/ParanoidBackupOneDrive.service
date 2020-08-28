@@ -1,8 +1,9 @@
 [Unit]
-Description=ParanoidOneDriveBackup Servoce
+Description=ParanoidOneDriveBackup Service
 
 [Service]
 Type=notify
 ExecStart=</path/to/the/executable>
 User=<user>
+Group=<user>
 Restart=on-failure

@@ -67,6 +67,7 @@ namespace ParanoidOneDriveBackup
             }
 
             AppData.Logger.LogDebug("shutting down");
+            Environment.Exit(0);
         }
 
         private void DeleteOldestFolders(string path, int max, CancellationToken ct)
